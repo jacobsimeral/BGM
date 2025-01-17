@@ -34,20 +34,21 @@ calibrated_swaption_exp_mats = [(1.0, 2), (2.0, 2), (3.0, 2), (5.0, 2), (7.0, 2)
 
 
 """Select Curve to Calibrate On"""
-global_curve = test_curve # agency_curve or sofr_curve
-global_curve_string = 'TEST' # AGENCY or SOFR
+global_curve = sofr_curve # agency_curve or sofr_curve
+global_curve_string = 'SOFR' # AGENCY or SOFR
 
 
 """Select Parameter Initial Guesses, Bounds, and Breakpoints"""
 theta_parameter_reduc_denom = 1
+decay_rate = 0.10 # for initial guess exponential decay correlation matrix best to pick values betweeen 0.05 and 0.25
 initial_guess = np.array([0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0, # A(x) parameters correspond to x = 0 - 15yrs for the 8 A params then exponential constant for x > 15yrs
-                          0.90, 0.1, # B(T) parameters, base level, lambda for: B(T) = 1 + (1 - base level) * np.exp(-T * lambda)
-                          0.90,0.1] + # C(t) parameters, base level, lambda for: C(t) = base level + (1-base level) * e^(-t * lambda)
+                          0.90, 0.3, # B(T) parameters, base level, lambda for: B(T) = 1 + (1 - base level) * np.exp(-T * lambda)
+                          0.90,0.3] + # C(t) parameters, base level, lambda for: C(t) = base level + (1-base level) * e^(-t * lambda)
                          [0.5, 0.5] * (len(selected_maturities) // theta_parameter_reduc_denom))  # Theta parameters for (np.cos(theta[i, 0]) * np.cos(theta[j, 0]) + np.sin(theta[i, 0]) * np.sin(theta[j, 0]) * np.cos(theta[i, 1] - theta[j, 1]))
 
 bounds = ([(1 / 10000, 1000 / 10000)] * 8 + [(0, 1)] + # A(x) parameter bounds
-          [(0.75, 1)] + [(0, 1)] + # B(T) parameter bounds
-          [(0.75, 1)] + [(0, 1)] + # C(t) parameter bounds
+          [(0.8, 1)] + [(0.05, 0.3)] + # B(T) parameter bounds
+          [(0.8, 1)] + [(0.05, 0.3)] + # C(t) parameter bounds
           [(-np.pi / 2, np.pi / 2)] * (2 * (len(selected_maturities) // theta_parameter_reduc_denom))) # Theta bounds
 
 global_a_breakpoints = [1, 2, 3, 5, 7, 9, 10, 15] # What years you want to calibrate the volatility to directly, anything between will be interpolated linearly
@@ -160,8 +161,9 @@ def getIVCalc(info_tuple, zcpPrc, maturities, a_params, b_params, c_params, fr_f
                 variance_sum += (integrated_covariance * wht[i] * wht[j] * fr_from_zero[i][0] * fr_from_zero[j][0]) / (swap_rate ** 2)
                 curve_impact_list.append((wht[i] * wht[j] * fr_from_zero[i][0] * fr_from_zero[j][0]) / (swap_rate ** 2))
                 curve_impact_list2.append((integrated_covariance))
-        print(f"{global_curve_string}: {curve_impact_list}")
-        print(f"{global_curve_string}: {curve_impact_list2}")
+        if verbose:
+            print(f"{global_curve_string}-Investigation: {curve_impact_list}")
+            print(f"{global_curve_string}-Covariance: {curve_impact_list2}")
         return np.sqrt(variance_sum)
 
     if type == 'caplet':
@@ -192,7 +194,6 @@ def refine_theta_for_exponential_decay(num_maturities, base_level, decay_rate):
 def calibrate_vol_surface(cap_vols, swaption_vols, zero_curve, maturities, discount_factors, time_step, initial_guess, bounds):
     num_maturities = len(maturities) # attempting without subtracting 1
     base_level = 1.0
-    decay_rate = 0.1
     # Start using thetas that produce a correlation matrix with exponential decay assumption
     adjusted_theta = refine_theta_for_exponential_decay(num_maturities//theta_parameter_reduc_denom, base_level, decay_rate)
     initial_guess[-2 * (num_maturities//theta_parameter_reduc_denom):] = adjusted_theta
