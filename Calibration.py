@@ -56,7 +56,7 @@ global_a_breakpoints = [1, 2, 3, 5, 7, 9, 10, 15] # What years you want to calib
 """A Penalty Function Parameters"""
 a_param_smoothness_penalty = False # three parameters below only matter if True
 a_lambda_reg = 0.00005  # regularization coef
-a_threshold = 0.0025  # difference threshold is 0.0025% to keep the optimizer from exploiting volatility averages
+a_threshold = 0.0025  # difference threshold is 0.0025 to keep the optimizer from exploiting volatility averages
 a_large_penalty = 100 # large penalty if difference in A params is greater than threshold
 
 """Optimizer Tolerances/Options"""
