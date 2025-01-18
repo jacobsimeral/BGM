@@ -274,17 +274,14 @@ def interpolate_cap_volatilities():
     cap_vols = pd.read_csv('Data/Input/CapVolsSOFR_BPTS.csv').rename(columns={'Strike': 'TTM'})
     cap_vols.columns = [cap_vols.columns[0]] + [float(col) for col in cap_vols.columns[1:]]
     print(f"Converted columns: {cap_vols.columns}")
-    # Define selected maturities for interpolation
     selected_maturities = np.arange(0, max_maturity_ceil, time_step)
 
     interpolated_cap_vols = pd.DataFrame({'TTM': selected_maturities})
-    # Interpolate cap volatilities across maturities
     for strike in cap_vols.columns[1:]:
         cs_maturities = PchipInterpolator(cap_vols['TTM'], cap_vols[strike])
         interpolated_cap_vols[strike] = cs_maturities(selected_maturities)
     interpolated_cap_vols = np.clip(interpolated_cap_vols, 0, None)
     print(f"Interpolated cap volatilities across maturities:\n{interpolated_cap_vols}")
-    # Interpolate ATM volatilities and apply clipping to avoid negative values
     interpolated_atm_vols = pd.DataFrame({'TTM': selected_maturities})
     for maturity in selected_maturities:
         maturity_key = f"{maturity}Y"
@@ -302,7 +299,6 @@ def interpolate_cap_volatilities():
                                                0][1:])
             interpolated_atm_vol = cs_strikes(atm_strike)
 
-            # Apply a lower limit (0) to avoid negative interpolated ATM volatilities
             interpolated_atm_vol = max(interpolated_atm_vol, 0)
             interpolated_atm_vols.loc[interpolated_atm_vols['TTM'] == maturity, 'ATM'] = interpolated_atm_vol
             print(f"Interpolated ATM vol for maturity {maturity}: {interpolated_atm_vol}")
