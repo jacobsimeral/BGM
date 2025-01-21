@@ -122,9 +122,7 @@ def one_factor_LIBOR_Market_Model(
             for k in range(term_steps - 1):  # Iterate over each term
                 T_k = terms[k]
                 j_r = j if J == 0 or k == 0 else j % (k + 1) # not using this with the current assumption of resetting term rate every 3 months seen in loop range below (0, k), otherwise replace 0 with j_R
-            for k in range(term_steps - 1):  # Iterate over each term
                 T_k = terms[k]
-
                 sum1 = 0 # drift summation
                 A_x_k = A_function((maturity * extend_int_coef) - times[J], a_params)
                 B_T_k = B_function(T_k, b_params)
@@ -169,7 +167,7 @@ def one_factor_LIBOR_Market_Model(
     initial_forward_rate = all_paths[0][:, 0]
     constant_path = np.tile(initial_forward_rate,
                             (all_paths[0].shape[1], 1)).T  # Extend constant forward rate across all time steps
-    constant_path_payoff = np.sum(constant_path[-1, :])
+    constant_path_payoff = np.sum(constant_path[-1, :]) # can change resampling to be based on different factors
     stacked_paths = np.stack(all_paths, axis=0)  # Shape: (num_paths, num_terms, num_time_steps)
     mean_path_payoff_per_term = np.mean(stacked_paths, axis=(0, 2))
     path_payoffs_per_term = np.mean(stacked_paths,axis=2)  # Average over time steps for each path and term (shape: num_paths x num_terms)
@@ -319,8 +317,8 @@ def read_parameters(output_type):
 def main(calibration_type, random_seed):
     a, b, c, theta = read_parameters(calibration_type)
     corr_matrix = construct_correlation_matrix(theta)
-    zero_curve_for_modelling = create_zero_curve('SOFR', sofr_curve, maturity, time_step, calibration=False) # Change to true if modelling Agency, False for SOFR
-    zero_curve_for_agency = create_zero_curve('AGENCY', agency_curve, maturity, time_step, calibration=True) # Change to true if modelling Agency, False for SOFR
+    zero_curve_for_modelling = create_zero_curve('SOFR', sofr_curve, maturity, time_step, col_name='SOFR')
+    zero_curve_for_agency = create_zero_curve('AGENCY', agency_curve, maturity, time_step, col_name='Agency Spot')
 
     agency_forwards, null_mbs_prices = one_factor_LIBOR_Market_Model(time_step, maturity, zero_curve_for_agency, None, a, b, c, corr_matrix, N,
     extend_int_coef=extend_int_coef, random_seed=random_seed, calibration_type=calibration_type, mortgage_swap_term_years_dict=mortgage_swap_term_years_dict,
@@ -349,23 +347,23 @@ sofr_curve = pd.read_csv('Data/Input/SOFR curve.csv')
 agency_curve = pd.read_csv('Data/Input/Agency curve.csv')
 test_curve = pd.read_csv('Data/Input/test_curve.csv')
 current_time = datetime.now()
-seed = 42
-maturity = 10.0  # max term/maturity needed to model forward curve (i.e. I only care about 0.25-10Y SOFR)
+seed = 42 # random seed is fixed across simulations for testing purposes
+maturity = 10.0  # Highest term necessary to model. i.e. I only care about SOFR 0-10Y
 time_step = 0.25  # time step in years used in calibration
 extend_int_coef = 3  # means we will forecast to 30 years but our data is 10 years in year_frac yr increments
 N = 512  # Number of monte carlo paths, main loop will only run have of these because the other half are antithetic
 mortgage_principal = 100
 mortgage_interest_rate = 0.07  # 7% mortgage rate
 mortgage_term = 360  # 30-year mortgage in months
-alpha_cev = 0.85
+alpha_cev = 0.85 # assuming (1 - alpha) as the exponent in CEV
 # {term: weight}
 # mortgage_swap_term_years_dict = {2: 0.561898, 10: 0.438102}
-mortgage_swap_term_years_dict = {2: 0.5, 10: 0.5}
-volatility_scaler = 1
-spread = 0.001
-swap_rate_factor = 1.5
-preview_index_list = [7, 39]
-preview_index_list_agency = [0]
+mortgage_swap_term_years_dict = {2: 0.5, 10: 0.5} # Pick the forward curves to create weighted swap curve. Make sure the weights sum to 1.
+volatility_scaler = 1 # If you want to scale volatility for test purposes
+spread = 0.001 # Add to agency to discount cashflows
+swap_rate_factor = 1.5 # what you multiply the weighted swap curve by to account for lack of primary secondary spread in simplified model
+preview_index_list = [7, 39] # for 2 and 10 year SOFR
+preview_index_list_agency = [0] # for 0.25 Agency
 for i in range(len(calibration_types)):
     with open(f"Data/Output/LogResampledInfo_{calibration_types[i]}Calibration.txt", 'w') as file:
         pass  # This clears the file content

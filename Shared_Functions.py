@@ -44,7 +44,7 @@ def B_function(T, b_params):
     :param b_params: a base and a lambda for the exponential decay
     :return: 1 + (1 - b_params[0]) * np.exp(-T * b_params[1])
     """
-    return 1 + (1 - b_params[0]) * np.exp(-T * b_params[1])
+    return b_params[0] + (1 - b_params[0]) * np.exp(-T * b_params[1])
 
 def C_function(t, c_params):
     """
@@ -54,7 +54,7 @@ def C_function(t, c_params):
     """
     return c_params[0] + (1 - c_params[0]) * (1 - np.exp(-t * c_params[1]))
 
-def create_zero_curve(curve_used, curve, max_maturity, time_step, calibration=False, alternate=False, col_name=""):
+def create_zero_curve(curve_used, curve, max_maturity, time_step, col_name=''):
     """
     :param curve_used: for determining the column name in the dataframe and for naming conventions elsewhere
     :param curve: the curve dataframe with a column for term and for rate
