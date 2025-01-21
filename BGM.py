@@ -120,16 +120,15 @@ def one_factor_LIBOR_Market_Model(
             j = J if J < (term_steps - 1) else J - (extend_increment - 1) * (term_steps - 1)
 
             for k in range(term_steps - 1):  # Iterate over each term
-                T_k = terms[k]
+                sum1 = 0 # drift summation
                 j_r = j if J == 0 or k == 0 else j % (k + 1) # not using this with the current assumption of resetting term rate every 3 months seen in loop range below (0, k), otherwise replace 0 with j_R
                 T_k = terms[k]
-                sum1 = 0 # drift summation
                 A_x_k = A_function((maturity * extend_int_coef) - times[J], a_params)
                 B_T_k = B_function(T_k, b_params)
                 C_t = C_function(times[J], c_params)
                 fwd_rate_vol = vol_factor * A_x_k * B_T_k * C_t
 
-                # 0 means SOFR term rates reset every 3 months
+                # 0 means SOFR term rates reset every 3 months. If we didn't reset the rate we would want the j_r variable as lower bound so the summation lower bound only includes "rates" that haven't "matured" yet
                 for i in range(0, k):
                     T_i = terms[i]
                     A_x_i = A_function((maturity * extend_int_coef) - times[J], a_params)
