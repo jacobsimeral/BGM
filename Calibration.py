@@ -157,7 +157,7 @@ def getIVCalc(info_tuple, zcpPrc, maturities, a_params, b_params, c_params, fr_f
                 integrated_covariance = riemann_sum(c, 0, T0) * (1/T0) * correlation_matrix[i, j]
                 # integrated_covariance = quad(c, 0, T0)[0] * (1/T0) * correlation_matrix[i, j]
                 # sum from expiration to maturity
-                # this is essentially one massive weight multiplied by the integrated covariance
+                # this is essentially a matrix of weights multiplied by the matrix of integrated covariances
                 variance_sum += (integrated_covariance * wht[i] * wht[j] * fr_from_zero[i][0] * fr_from_zero[j][0]) / (swap_rate ** 2)
                 curve_impact_list.append((wht[i] * wht[j] * fr_from_zero[i][0] * fr_from_zero[j][0]) / (swap_rate ** 2))
                 curve_impact_list2.append((integrated_covariance))
