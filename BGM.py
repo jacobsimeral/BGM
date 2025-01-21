@@ -78,14 +78,14 @@ def interpolate_monthly_rates(forward_rate_row, num_months, year_frac, time_ceil
     return adjusted_monthly_rates
 
 
-def one_factor_LIBOR_Market_Model(
+def LIBOR_Market_Model(
         time_step, maturity, zero_curve_for_modelling, zero_curve_for_mbs_discounting, a_params, b_params, c_params,
         correlation_matrix, N, mortgage_interest_rate=0.07,
         mortgage_principal=1000000, mortgage_term=360, extend_int_coef=1,
         random_seed=42, calibration_type='SOFR', mortgage_swap_term_years_dict=None,
         spread=0.0, vol_factor=1, swap_rate_factor=1, use_CEV=False, alpha_cev=0.2, global_preview_index_list=[0],calculate_mbs_price=True, curve_modelled=''):
     """
-    One-factor LIBOR Market Model implementation with Monte Carlo simulation and antithetic/quadratic resampling.
+    LIBOR Market Model implementation with Monte Carlo simulation and antithetic/quadratic resampling.
     Allows toggling between the standard log-normal SDE and the CEV model.
     """
 
@@ -319,13 +319,13 @@ def main(calibration_type, random_seed):
     zero_curve_for_modelling = create_zero_curve('SOFR', sofr_curve, maturity, time_step, col_name='SOFR')
     zero_curve_for_agency = create_zero_curve('AGENCY', agency_curve, maturity, time_step, col_name='Agency Spot')
 
-    agency_forwards, null_mbs_prices = one_factor_LIBOR_Market_Model(time_step, maturity, zero_curve_for_agency, None, a, b, c, corr_matrix, N,
+    agency_forwards, null_mbs_prices = LIBOR_Market_Model(time_step, maturity, zero_curve_for_agency, None, a, b, c, corr_matrix, N,
     extend_int_coef=extend_int_coef, random_seed=random_seed, calibration_type=calibration_type, mortgage_swap_term_years_dict=mortgage_swap_term_years_dict,
     spread=spread, use_CEV=True, alpha_cev=alpha_cev, global_preview_index_list=preview_index_list_agency,calculate_mbs_price=False, curve_modelled='AGENCY')
 
     zero_curve_for_mbs_discounting = agency_forwards[0, :] # take 3 month forward agency curve for discounting
 
-    forward_rate_matrix, mbs_prices = one_factor_LIBOR_Market_Model(time_step, maturity, zero_curve_for_modelling, zero_curve_for_mbs_discounting, a, b, c, corr_matrix, N, mortgage_interest_rate,
+    forward_rate_matrix, mbs_prices = LIBOR_Market_Model(time_step, maturity, zero_curve_for_modelling, zero_curve_for_mbs_discounting, a, b, c, corr_matrix, N, mortgage_interest_rate,
     mortgage_principal=mortgage_principal, mortgage_term=mortgage_term, extend_int_coef=extend_int_coef,
     random_seed=random_seed, calibration_type=calibration_type, mortgage_swap_term_years_dict=mortgage_swap_term_years_dict,
     spread=spread, swap_rate_factor=swap_rate_factor, use_CEV=True, alpha_cev=alpha_cev, global_preview_index_list=preview_index_list,calculate_mbs_price=True, curve_modelled='SOFR')
