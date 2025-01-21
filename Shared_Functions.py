@@ -54,7 +54,7 @@ def C_function(t, c_params):
     """
     return c_params[0] + (1 - c_params[0]) * (1 - np.exp(-t * c_params[1]))
 
-def create_zero_curve(curve_used, curve, max_maturity, time_step, calibration=False, alternate=False):
+def create_zero_curve(curve_used, curve, max_maturity, time_step, calibration=False, alternate=False, col_name=""):
     """
     :param curve_used: for determining the column name in the dataframe and for naming conventions elsewhere
     :param curve: the curve dataframe with a column for term and for rate
@@ -66,22 +66,6 @@ def create_zero_curve(curve_used, curve, max_maturity, time_step, calibration=Fa
     new_ttm = np.arange(0, 30 + time_step, time_step)
     selected_maturities = np.arange(0, max_maturity + time_step, time_step)
     selected_indices = [i for i, ttm in enumerate(selected_maturities) if ttm in selected_maturities]
-    # This is some really garbage code. This could easily be improved.
-    if alternate:
-        col_name = "AGENCY"
-    else:
-        if curve_used == "SOFR":
-            if calibration:
-                col_name = "Agency Spot"
-            else:
-                col_name = "SOFR"
-        elif curve_used == "GOVT":
-            col_name = 'Govt Spot'
-        elif curve_used == 'AGENCY':
-            if calibration:
-                col_name = 'Agency Spot'
-            else:
-                col_name = 'SOFR'
     terms = curve['Term'].values
     rates = curve[col_name].values / 100
     zero_curve_filtered = np.interp(new_ttm[selected_indices], terms, rates)
