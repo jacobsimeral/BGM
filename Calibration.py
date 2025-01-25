@@ -9,6 +9,8 @@ import bisect
 import time
 import matplotlib.pyplot as plt
 
+
+
 sofr_curve = pd.read_csv('Data/Input/SOFR curve.csv')
 agency_curve = pd.read_csv('Data/Input/Agency curve.csv')
 test_curve = pd.read_csv('Data/Input/test_curve.csv')
@@ -34,33 +36,33 @@ calibrated_swaption_exp_mats = [(1.0, 2), (2.0, 2), (3.0, 2), (5.0, 2), (7.0, 2)
 
 
 """Select Curve to Calibrate On"""
-global_curve = sofr_curve # agency_curve or sofr_curve
-global_curve_string = 'SOFR' # AGENCY or SOFR
+global_curve = agency_curve # agency_curve or sofr_curve
+global_curve_string = 'AGENCY' # AGENCY or SOFR
 
 
 """Select Parameter Initial Guesses, Bounds, and Breakpoints"""
 theta_parameter_reduc_denom = 1
 decay_rate = 0.10 # for initial guess exponential decay correlation matrix best to pick values betweeen 0.05 and 0.25
-initial_guess = np.array([0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0, # A(x) parameters correspond to x = 0 - 15yrs for the 8 A params then exponential constant for x > 15yrs
+initial_guess = np.array([0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.01, # A(x) parameters correspond to x = 0 - 15yrs for the 8 A params then exponential constant for x > 15yrs
                           0.90, 0.3, # B(T) parameters, base level, lambda for: B(T) = 1 + (1 - base level) * np.exp(-T * lambda)
                           0.90,0.3] + # C(t) parameters, base level, lambda for: C(t) = base level + (1-base level) * e^(-t * lambda)
                          [0.5, 0.5] * (len(selected_maturities) // theta_parameter_reduc_denom))  # Theta parameters for (np.cos(theta[i, 0]) * np.cos(theta[j, 0]) + np.sin(theta[i, 0]) * np.sin(theta[j, 0]) * np.cos(theta[i, 1] - theta[j, 1]))
 
-bounds = ([(1 / 10000, 1000 / 10000)] * 8 + [(0, 1)] + # A(x) parameter bounds
+bounds = ([(1 / 10000, 1000 / 10000)] * 8 + [(0, 0.15)] + # A(x) parameter bounds
           [(0.8, 1)] + [(0.05, 0.3)] + # B(T) parameter bounds
           [(0.8, 1)] + [(0.05, 0.3)] + # C(t) parameter bounds
           [(-np.pi / 2, np.pi / 2)] * (2 * (len(selected_maturities) // theta_parameter_reduc_denom))) # Theta bounds
 
-global_a_breakpoints = [1, 2, 3, 5, 7, 9, 10, 15] # What years you want to calibrate the volatility to directly, anything between will be interpolated linearly
+global_a_breakpoints = [1, 2, 3, 5, 7, 9, 12, 15] # What years you want to calibrate the volatility to directly, anything between will be interpolated linearly
 
 """A Penalty Function Parameters"""
-a_param_smoothness_penalty = False # three parameters below only matter if True
+a_param_smoothness_penalty = True # three parameters below only matter if True
 a_lambda_reg = 0.00005  # regularization coef
-a_threshold = 0.0025  # difference threshold is 0.0025 to keep the optimizer from exploiting volatility averages
+a_threshold = 0.0015  # difference threshold is 0.0025 to keep the optimizer from exploiting volatility averages
 a_large_penalty = 100 # large penalty if difference in A params is greater than threshold
 
 """Optimizer Tolerances/Options"""
-global_optimizer_method = 'L-BFGS-B'
+global_optimizer_method = 'L-BFGS-B' #'TNC', 'L-BFGS-B TNC takes MUCH longer to calibrate if you do not lower the thresholds
 global_optimizer_options_dict = {
     'maxiter': 3000, # Maximum number of iterations the optimizer will run. Increasing this value allows the optimizer more attempts to reach convergence. Recommended size for more complex problems: between 1000-5000.
     'maxfun': 6000, # Maximum number of function evaluations allowed. A higher value gives the optimizer more flexibility to explore the function space, useful for larger, complex problems. Recommended size: typically 2x - 3x the max iterations (1000-10000).
@@ -153,11 +155,11 @@ def getIVCalc(info_tuple, zcpPrc, maturities, a_params, b_params, c_params, fr_f
                 c = lambda t: (A_function(maturities[i] - t, a_params,breakpoints=global_a_breakpoints) * C_function(t, c_params) * B_i) * \
                               (A_function(maturities[j] - t, a_params, breakpoints=global_a_breakpoints) * C_function(t, c_params) * B_j)
 
-                # integrate from 0 up until expiration
+                # integrate from 0 up until expiration. Riemann sum provided similar result to quadrature integration out to several decimal places
                 integrated_covariance = riemann_sum(c, 0, T0) * (1/T0) * correlation_matrix[i, j]
                 # integrated_covariance = quad(c, 0, T0)[0] * (1/T0) * correlation_matrix[i, j]
                 # sum from expiration to maturity
-                # this is essentially a matrix of weights multiplied by the matrix of integrated covariances
+                # this is essentially a matrix of weights multplied by their counterpart in matrix of covariances
                 variance_sum += (integrated_covariance * wht[i] * wht[j] * fr_from_zero[i][0] * fr_from_zero[j][0]) / (swap_rate ** 2)
                 curve_impact_list.append((wht[i] * wht[j] * fr_from_zero[i][0] * fr_from_zero[j][0]) / (swap_rate ** 2))
                 curve_impact_list2.append((integrated_covariance))

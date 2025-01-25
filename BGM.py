@@ -123,7 +123,8 @@ def LIBOR_Market_Model(
                 sum1 = 0 # drift summation
                 j_r = j if J == 0 or k == 0 else j % (k + 1) # not using this with the current assumption of resetting term rate every 3 months seen in loop range below (0, k), otherwise replace 0 with j_R
                 T_k = terms[k]
-                A_x_k = A_function((maturity * extend_int_coef) - times[J], a_params)
+                A_x_k = A_function(times[J], a_params)
+                # A_x_k = A_function((maturity * extend_int_coef) - times[J], a_params)
                 B_T_k = B_function(T_k, b_params)
                 C_t = C_function(times[J], c_params)
                 fwd_rate_vol = vol_factor * A_x_k * B_T_k * C_t
@@ -131,7 +132,8 @@ def LIBOR_Market_Model(
                 # 0 means SOFR term rates reset every 3 months. If we didn't reset the rate we would want the j_r variable as lower bound so the summation lower bound only includes "rates" that haven't "matured" yet
                 for i in range(0, k):
                     T_i = terms[i]
-                    A_x_i = A_function((maturity * extend_int_coef) - times[J], a_params)
+                    A_x_i = A_function(times[J], a_params)
+                    # A_x_i = A_function((maturity * extend_int_coef) - times[J], a_params)
                     # We are operating under the assumption that A parameters show the snapshot view of volatility over the entire timeline rather than within a specific term interval
                     B_T_i = B_function(T_i, b_params)
                     sum1 += ((vol_factor * A_x_i * B_T_i * C_t * correlation_matrix[i, k] *
@@ -340,7 +342,7 @@ def main(calibration_type, random_seed):
 """
 Set parameters below:
 """
-calibration_types = ['SOFR', 'AGENCY', 'TEST'] # File header information (pulls calibration file)
+calibration_types = ['AGENCY','SOFR', 'TEST'] # File header information (pulls calibration file)
 resampled_paths_dict = {'SOFR': {},'AGENCY': {},'TEST': {}}
 sofr_curve = pd.read_csv('Data/Input/SOFR curve.csv')
 agency_curve = pd.read_csv('Data/Input/Agency curve.csv')
@@ -350,7 +352,7 @@ seed = 42 # random seed is fixed across simulations for testing purposes
 maturity = 10.0  # Highest term necessary to model. i.e. I only care about SOFR 0-10Y
 time_step = 0.25  # time step in years used in calibration
 extend_int_coef = 3  # means we will forecast to 30 years but our data is 10 years in year_frac yr increments
-N = 512  # Number of monte carlo paths, main loop will only run have of these because the other half are antithetic
+N = 256  # Number of monte carlo paths, main loop will only run have of these because the other half are antithetic
 mortgage_principal = 100
 mortgage_interest_rate = 0.07  # 7% mortgage rate
 mortgage_term = 360  # 30-year mortgage in months
