@@ -57,9 +57,8 @@ global_a_breakpoints = [1, 2, 3, 5, 7, 9, 12, 15] # What years you want to calib
 
 """A Penalty Function Parameters"""
 a_param_smoothness_penalty = True # three parameters below only matter if True
-a_lambda_reg = 0.00005  # regularization coef
-a_threshold = 0.0015  # difference threshold is 0.0025 to keep the optimizer from exploiting volatility averages
-a_large_penalty = 100 # large penalty if difference in A params is greater than threshold
+a_threshold = 0.0020  # difference threshold is 0.0025 to keep the optimizer from exploiting volatility averages
+a_large_penalty = 0.03 # large penalty if difference in A params is greater than threshold
 
 """Optimizer Tolerances/Options"""
 global_optimizer_method = 'L-BFGS-B' #'TNC', 'L-BFGS-B TNC takes MUCH longer to calibrate if you do not lower the thresholds
@@ -124,7 +123,7 @@ def smoothness_penalty(a_params):
     """
     differences = np.diff(a_params)
     penalties = np.where(differences > a_threshold, a_large_penalty, differences ** 2)
-    return a_lambda_reg * np.sum(penalties)
+    return np.sum(penalties)
 
 def getIVCalc(info_tuple, zcpPrc, maturities, a_params, b_params, c_params, fr_from_zero, correlation_matrix, type):
     """
