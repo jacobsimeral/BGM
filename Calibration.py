@@ -160,8 +160,8 @@ def getIVCalc(info_tuple, zcpPrc, maturities, a_params, b_params, c_params, fr_f
                 # sum from expiration to maturity
                 # this is essentially a matrix of weights multplied by their counterpart in matrix of covariances
                 variance_sum += (integrated_covariance * wht[i] * wht[j] * fr_from_zero[i][0] * fr_from_zero[j][0]) / (swap_rate ** 2)
-                curve_impact_list.append((wht[i] * wht[j] * fr_from_zero[i][0] * fr_from_zero[j][0]) / (swap_rate ** 2))
-                curve_impact_list2.append((integrated_covariance))
+                curve_impact_list.append((wht[i] * wht[j] * fr_from_zero[i][0] * fr_from_zero[j][0]) / (swap_rate ** 2)) # these are for debugging output
+                curve_impact_list2.append((integrated_covariance)) # these are for debugging output
         if verbose:
             print(f"{global_curve_string}-Investigation: {curve_impact_list}")
             print(f"{global_curve_string}-Covariance: {curve_impact_list2}")
@@ -311,6 +311,9 @@ def interpolate_cap_volatilities():
     with open('Data/Output/InterpolatedCapVols.txt', 'w') as f:
         f.write(interpolated_cap_vols.to_string())
     return interpolated_cap_vols
+
+
+
 def run_calibration(curve, curve_used):
     print("Program started.")
     start_time = time.time()
@@ -331,7 +334,6 @@ def run_calibration(curve, curve_used):
 
     calibrated_params = calibrate_vol_surface(interpolated_atm_cap_vols, interpolated_swaption_vols, zero_curve_filtered,
                                                 selected_maturities, discount_factors, time_step, initial_guess, bounds)
-    # Summary Report
     end_time = time.time()
     time_taken = end_time - start_time
     print(f"Time taken: {time_taken} seconds")
