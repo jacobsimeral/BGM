@@ -115,13 +115,13 @@ def LIBOR_Market_Model(
         antithetic_forward_rate_matrix = forward_rate_from_zero.copy()
 
         for J in range(0, time_steps - (extend_int_coef - 1)):  # Iterate over all time steps
-            if J % (term_steps - 1) == 0:
-                extend_increment += 1
-            j = J if J < (term_steps - 1) else J - (extend_increment - 1) * (term_steps - 1)
+            # if J % (term_steps - 1) == 0:
+                # extend_increment += 1
+            # j = J if J < (term_steps - 1) else J - (extend_increment - 1) * (term_steps - 1)
 
             for k in range(term_steps - 1):  # Iterate over each term
                 sum1 = 0 # drift summation
-                j_r = j if J == 0 or k == 0 else j % (k + 1) # not using this with the current assumption of resetting term rate every 3 months seen in loop range below (0, k), otherwise replace 0 with j_R
+                # j_r = j if J == 0 or k == 0 else j % (k + 1) # not using this with the current assumption of resetting term rate every 3 months seen in loop range below (0, k), otherwise replace 0 with j_R
                 T_k = terms[k]
                 A_x_k = A_function(times[J], a_params)
                 # A_x_k = A_function((maturity * extend_int_coef) - times[J], a_params)
@@ -207,7 +207,7 @@ def LIBOR_Market_Model(
         plt.figure(figsize=(14, 8))
         for i, path in enumerate(all_paths):
 
-            plt.plot(t_graph, path[global_preview_index, :], color=colors[i], alpha=0.3, linewidth=0.5)
+            plt.plot(t_graph, path[global_preview_index, :], color=colors[i], alpha=0.3, linewidth=2)
         with open(f"Data/Output/LogResampledInfo_{calibration_type}Calibration.txt", 'a') as file:
             file.write(f"Calibration Type: {calibration_type}\n")
             file.write(f"{curve_modelled}{float((global_preview_index + 1) * time_step)}Y")
@@ -215,7 +215,7 @@ def LIBOR_Market_Model(
             file.write(f"Weights: {weights}\n")
             file.write(f"Resampled Paths: {resampled_paths[global_preview_index, :]}\n")
         average_path = np.mean(all_paths, axis=0)
-        plt.plot(t_graph, average_path[global_preview_index, :], color="purple", linewidth=2, label="Average Path")
+        # plt.plot(t_graph, average_path[global_preview_index, :], color="purple", linewidth=2, label="Average Path")
         plt.plot(t_graph, constant_path[global_preview_index, :], color="blue", linewidth=2, label="Constant Path", alpha=0.5)
         plt.plot(t_graph, resampled_paths[global_preview_index, :], color="red", linewidth=2, label="Resampled Path")
 
