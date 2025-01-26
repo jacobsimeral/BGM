@@ -36,8 +36,9 @@ calibrated_swaption_exp_mats = [(1.0, 2), (2.0, 2), (3.0, 2), (5.0, 2), (7.0, 2)
 
 
 """Select Curve to Calibrate On"""
-global_curve = agency_curve # agency_curve or sofr_curve
-global_curve_string = 'AGENCY' # AGENCY or SOFR
+global_curve = sofr_curve # agency_curve or sofr_curve
+global_curve_string = 'SOFR' # AGENCY or SOFR
+global_col_name = 'SOFR' # SOFR or Agency Spot
 
 
 """Select Parameter Initial Guesses, Bounds, and Breakpoints"""
@@ -61,15 +62,15 @@ a_threshold = 0.0020  # difference threshold is 0.0025 to keep the optimizer fro
 a_large_penalty = 0.03 # large penalty if difference in A params is greater than threshold
 
 """Optimizer Tolerances/Options"""
-global_optimizer_method = 'L-BFGS-B' #'TNC', 'L-BFGS-B TNC takes MUCH longer to calibrate if you do not lower the thresholds
+global_optimizer_method = 'TNC' #'TNC'or 'L-BFGS-B TNC takes MUCH longer to calibrate if you do not lower the thresholds
 global_optimizer_options_dict = {
-    'maxiter': 3000, # Maximum number of iterations the optimizer will run. Increasing this value allows the optimizer more attempts to reach convergence. Recommended size for more complex problems: between 1000-5000.
-    'maxfun': 6000, # Maximum number of function evaluations allowed. A higher value gives the optimizer more flexibility to explore the function space, useful for larger, complex problems. Recommended size: typically 2x - 3x the max iterations (1000-10000).
+    'maxiter': 2000, # Maximum number of iterations the optimizer will run. Increasing this value allows the optimizer more attempts to reach convergence. Recommended size for more complex problems: between 1000-5000.
+    'maxfun': 4000, # Maximum number of function evaluations allowed. A higher value gives the optimizer more flexibility to explore the function space, useful for larger, complex problems. Recommended size: typically 2x - 3x the max iterations (1000-10000).
     'disp': True, # Display optimization progress. Setting this to True shows information about each iteration.
     # 'xtol': 1e-5, # Tolerance for changes in the parameter values (specific to some algorithms like 'L-BFGS-B' or 'Nelder-Mead'). Smaller values (e.g., 1e-9 or 1e-10) require closer convergence in parameter space, while larger values allow for looser convergence. Recommended range: 1e-6 to 1e-9.
-    'ftol': 1e-7, # Tolerance for the change in the objective function to determine convergence. Smaller values (e.g., 1e-7 or 1e-8) lead to more precise convergence but may slow down the process; higher values (1e-4 or 1e-5) may allow faster, less precise results.
-    'gtol': 1e-7, # Gradient norm tolerance for convergence, Smaller values (e.g., 1e-8) can increase accuracy by requiring a tighter convergence on the gradient but may also make convergence slower. Typical range: 1e-6 to 1e-8.
-    'eps': 1e-7, # Step size used for finite difference calculations in gradient approximation. Smaller values provide a finer gradient approximation but can make the optimization slower. Common values range from 1e-6 to 1e-8 depending on precision needs.
+    'ftol': 1e-6, # Tolerance for the change in the objective function to determine convergence. Smaller values (e.g., 1e-7 or 1e-8) lead to more precise convergence but may slow down the process; higher values (1e-4 or 1e-5) may allow faster, less precise results.
+    'gtol': 1e-6, # Gradient norm tolerance for convergence, Smaller values (e.g., 1e-8) can increase accuracy by requiring a tighter convergence on the gradient but may also make convergence slower. Typical range: 1e-6 to 1e-8.
+    'eps': 1e-6, # Step size used for finite difference calculations in gradient approximation. Smaller values provide a finer gradient approximation but can make the optimization slower. Common values range from 1e-6 to 1e-8 depending on precision needs.
 }
 
 
@@ -293,7 +294,7 @@ def interpolate_cap_volatilities():
             strikes = interpolated_cap_vols.columns[1:]
             if atm_strike < min(strikes) or atm_strike > max(strikes):
                 print(f"ATM Strike {atm_strike} out of bounds for available strikes.")
-                continue  # Skip if the strike is out of bounds
+                continue
 
             cs_strikes = PchipInterpolator(strikes,
                                            interpolated_cap_vols.loc[interpolated_cap_vols['TTM'] == maturity].values[
@@ -314,19 +315,13 @@ def interpolate_cap_volatilities():
 
 
 
-def run_calibration(curve, curve_used):
+def run_calibration(curve, curve_used, col_name):
     print("Program started.")
     start_time = time.time()
     interpolate_cap_volatilities()
     interpolated_atm_cap_vols = pd.read_csv('Data/Output/InterpolatedATMCapVols.txt', sep=r'\s+')
     interpolated_swaption_vols = pd.read_csv('Data/Output/InterpolatedSwaptionVols.txt', sep=r'\s+')
     interpolated_atm_cap_vols.index, interpolated_swaption_vols.index = interpolated_atm_cap_vols['TTM'], interpolated_swaption_vols['Maturity']
-    if curve_used == "SOFR":
-        col_name = "SOFR"
-    elif curve_used == 'AGENCY':
-        col_name = 'Agency Spot'
-    elif curve_used == "TEST":
-        col_name = 'Agency Spot'
     sofr_terms = curve['Term'].values
     sofr_rates = curve[col_name].values / 100
     zero_curve_filtered = np.interp(selected_maturities, sofr_terms, sofr_rates)
@@ -354,4 +349,4 @@ def run_calibration(curve, curve_used):
     return calibrated_params, time_taken
 
 
-calibrated_params, time_taken= run_calibration(global_curve, global_curve_string)
+calibrated_params, time_taken= run_calibration(global_curve, global_curve_string, global_col_name)
