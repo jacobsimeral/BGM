@@ -67,13 +67,12 @@ class BGMModel:
     seed : int, optional
         Random seed for reproducibility in Monte Carlo simulations (default is 42).
     """
-    def __init__(self, calibration_types, sofr_curve, agency_curve, test_curve, maturity, time_step, extend_int_coef, N,
+    def __init__(self, calibration_types, sofr_curve, agency_curve, maturity, time_step, extend_int_coef, N,
                  mortgage_principal, mortgage_interest_rate, mortgage_term, alpha_cev, mortgage_swap_term_years_dict,
                  volatility_scaler, spread, swap_rate_factor, preview_index_list, preview_index_list_agency, seed=42, prepayment_base_rate=0.002, use_CEV=True):
         self.calibration_types = calibration_types
         self.sofr_curve = sofr_curve
         self.agency_curve = agency_curve
-        self.test_curve = test_curve
         self.maturity = maturity
         self.time_step = time_step
         self.extend_int_coef = extend_int_coef

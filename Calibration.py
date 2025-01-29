@@ -327,7 +327,7 @@ class BGMCalibration:
 
 
 
-    def run_calibration(self, curve, curve_used, col_name):
+    def run_calibration(self):
         print("Program started.")
         start_time = time.time()
         atm_strikes_interpolated = self.interpolate_atm_strikes(self.atm_strikes)
@@ -335,8 +335,8 @@ class BGMCalibration:
         interpolated_atm_cap_vols = pd.read_csv('Data/Output/InterpolatedATMCapVols.txt', sep=r'\s+')
         interpolated_swaption_vols = pd.read_csv('Data/Output/InterpolatedSwaptionVols.txt', sep=r'\s+')
         interpolated_atm_cap_vols.index, interpolated_swaption_vols.index = interpolated_atm_cap_vols['TTM'], interpolated_swaption_vols['Maturity']
-        sofr_terms = curve['Term'].values
-        sofr_rates = curve[col_name].values / 100
+        sofr_terms = self.curve_df['Term'].values
+        sofr_rates = self.curve_df[self.curve_col_name].values / 100
         zero_curve_filtered = np.interp(self.selected_maturities, sofr_terms, sofr_rates)
         discount_factors = np.exp(-zero_curve_filtered * self.selected_maturities)
 
@@ -345,10 +345,10 @@ class BGMCalibration:
         end_time = time.time()
         time_taken = end_time - start_time
         print(f"Time taken: {time_taken} seconds")
-        with open('Data/Output/' + curve_used + '_calibration.txt', 'w') as file:
+        with open('Data/Output/' + self.curve_string + '_calibration.txt', 'w') as file:
             file.write(f"Trial Run at: {datetime.datetime.now()}\n")
             file.write(f"Time Taken: {str(time_taken) + str(time.time())}\n")
-            file.write(f"Curve Used: {curve_used}\n")
+            file.write(f"Curve Used: {self.curve_string}\n")
             file.write(
                 f"A Params: {np.array2string(calibrated_params[:9], formatter={'float_kind': lambda x: f'{x:.6f}'})}\n")
             file.write(
@@ -358,7 +358,7 @@ class BGMCalibration:
             file.write(f"Theta Params: {calibrated_params[13:]}\n")
             file.write(f"Swaption Model,Market Vols:{self.global_swaption_model_vols}\n")
             file.write(f"Cap Model,Market Vols:{self.global_cap_model_vols}\n")
-        np.savetxt(r'Data\Output\\' + curve_used + 'CorrelationMatrix.txt', construct_correlation_matrix(calibrated_params[13:]), delimiter=', ', fmt='%s')
+        np.savetxt(r'Data\Output\\' + self.curve_string + 'CorrelationMatrix.txt', construct_correlation_matrix(calibrated_params[13:]), delimiter=', ', fmt='%s')
         return calibrated_params, time_taken
 
 
