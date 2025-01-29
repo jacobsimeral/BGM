@@ -150,8 +150,8 @@ class BGMCalibration:
         """
         T0, Tn, bsIV = info_tuple
         variance_sum = 0.0
-        curve_impact_list = []
-        curve_impact_list2 = []
+        investigation_list = []
+        covariance_list = []
         if type == 'swaption':
             start = bisect.bisect_left(maturities, T0)  # Get index of first critical time point >= T0
             end = bisect.bisect_left(maturities, Tn)
@@ -173,11 +173,11 @@ class BGMCalibration:
                     # sum from expiration to maturity
                     # this is essentially a matrix of weights multplied by their counterpart in matrix of covariances
                     variance_sum += (integrated_covariance * wht[i] * wht[j] * fr_from_zero[i][0] * fr_from_zero[j][0]) / (swap_rate ** 2)
-                    curve_impact_list.append((wht[i] * wht[j] * fr_from_zero[i][0] * fr_from_zero[j][0]) / (swap_rate ** 2)) # these are for debugging output
-                    curve_impact_list2.append((integrated_covariance)) # these are for debugging output
+                    investigation_list.append((wht[i] * wht[j] * fr_from_zero[i][0] * fr_from_zero[j][0]) / (swap_rate ** 2)) # these are for debugging output
+                    covariance_list.append((integrated_covariance)) # these are for debugging output
             if self.verbose:
-                print(f"{self.curve_string}-Investigation: {curve_impact_list}")
-                print(f"{self.curve_string}-Covariance: {curve_impact_list2}")
+                print(f"{self.curve_string}-Investigation: {investigation_list}")
+                print(f"{self.curve_string}-Covariance: {covariance_list}")
             return np.sqrt(variance_sum)
 
         if type == 'caplet':

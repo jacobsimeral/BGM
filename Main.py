@@ -10,16 +10,16 @@ def main(calibrate=True, BGM=True):
     sofr_curve = pd.read_csv('Data/Input/SOFR curve.csv')
     agency_curve = pd.read_csv('Data/Input/Agency curve.csv')
     test_curve = pd.read_csv('Data/Input/test_curve.csv')
-    max_maturity = 20
-    time_step = 1/2
+    max_maturity = 20 # Highest maturity to calibrate (e.g., 20 years)
+    time_step = 1/2  # Semi-annual time step, faster than 1/4 considering none of our instruments fall in a quarter year increment that is not also a half year.
     max_maturity_ceil = max_maturity + (2 * time_step)
     selected_maturities = list(np.arange(0, max_maturity_ceil, time_step))
     """
     Set parameters for Calibration below:
     """
     BGMCal = Calibration.BGMCalibration(
-        max_maturity=max_maturity,  # Highest maturity to calibrate (e.g., 20 years)
-        time_step=time_step,  # Semi-annual time step, faster than 1/4 considering none of our instruments fall in a quarter year increment that is not also a half year.
+        max_maturity=max_maturity,  # Highest maturity to calibrate (e.g., 20 years) ~ set above for now
+        time_step=time_step,  # Semi-annual time step, faster than 1/4 considering none of our instruments fall in a quarter year increment that is not also a half year. ~ set above for now
         verbose=True,  # Enable detailed debugging output
         calibrated_cap_maturities=[0.5, 1.5, 2.5, 3.5, 4.5],  # Maturities to calibrate cap volatilities
         calibrated_swaption_exp_mats=[
@@ -34,7 +34,7 @@ def main(calibrate=True, BGM=True):
         curve_col_name='SOFR',  # Column in the curve to use for calibration (e.g. SOFR or Agency Spot)
         corr_initial_decay_rate=0.10,  # Initial decay rate for the correlation matrix
         initial_guess=np.array([
-                                   0.006, 0.002, 0.004, 0.005, 0.002, 0.005, 0.004, 0.007, 0.01,
+                                   0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.01,
                                    # A(x) parameters for TTM 0-15
                                    0.90, 0.3,  # B(T) parameters: base level and lambda
                                    0.90, 0.3,  # C(t) parameters: base level and lambda
