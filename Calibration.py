@@ -287,21 +287,17 @@ class BGMCalibration:
     def interpolate_cap_volatilities(self, atm_strikes_interpolated):
         cap_vols = pd.read_csv('Data/Input/CapVolsSOFR_BPTS.csv').rename(columns={'Strike': 'TTM'})
         cap_vols.columns = [cap_vols.columns[0]] + [float(col) for col in cap_vols.columns[1:]]
-        print(f"Converted columns: {cap_vols.columns}")
         selected_maturities = np.arange(0, self.max_maturity_ceil, self.time_step)
-
         interpolated_cap_vols = pd.DataFrame({'TTM': selected_maturities})
         for strike in cap_vols.columns[1:]:
             cs_maturities = PchipInterpolator(cap_vols['TTM'], cap_vols[strike])
             interpolated_cap_vols[strike] = cs_maturities(selected_maturities)
         interpolated_cap_vols = np.clip(interpolated_cap_vols, 0, None)
-        print(f"Interpolated cap volatilities across maturities:\n{interpolated_cap_vols}")
         interpolated_atm_vols = pd.DataFrame({'TTM': selected_maturities})
         for maturity in selected_maturities:
             maturity_key = f"{maturity}Y"
             if maturity_key in atm_strikes_interpolated:
                 atm_strike = atm_strikes_interpolated[maturity_key]
-                print(f"Interpolating for maturity: {maturity}Y, ATM Strike: {atm_strike}")
 
                 strikes = interpolated_cap_vols.columns[1:]
                 if atm_strike < min(strikes) or atm_strike > max(strikes):
@@ -315,10 +311,8 @@ class BGMCalibration:
 
                 interpolated_atm_vol = max(interpolated_atm_vol, 0)
                 interpolated_atm_vols.loc[interpolated_atm_vols['TTM'] == maturity, 'ATM'] = interpolated_atm_vol
-                print(f"Interpolated ATM vol for maturity {maturity}: {interpolated_atm_vol}")
         interpolated_atm_vols = interpolated_atm_vols.rename(columns={'ATM': 'ATM_Volatility'})
         interpolated_atm_vols['ATM_Volatility'] = interpolated_atm_vols['ATM_Volatility'] / 10000
-        print(f"Interpolated ATM volatilities:\n{interpolated_atm_vols}")
         with open('Data/Output/InterpolatedATMCapVols.txt', 'w') as f:
             f.write(interpolated_atm_vols.to_string())
         with open('Data/Output/InterpolatedCapVols.txt', 'w') as f:
