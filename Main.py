@@ -1,9 +1,7 @@
 import pandas as pd
 import numpy as np
 import Calibration
-from datetime import datetime
 import BGMModel
-from Work_Research.Calibration import BGMCalibration
 
 
 def main(calibrate=True, BGM=True):
@@ -18,8 +16,8 @@ def main(calibrate=True, BGM=True):
     Set parameters for Calibration below:
     """
     BGMCal = Calibration.BGMCalibration(
-        max_maturity=max_maturity,  # Highest maturity to calibrate (e.g., 20 years) ~ set above for now
-        time_step=time_step,  # Semi-annual time step, faster than 1/4 considering none of our instruments fall in a quarter year increment that is not also a half year. ~ set above for now
+        max_maturity=max_maturity, # ~ set above for now
+        time_step=time_step,  # ~ set above for now
         verbose=True,  # Enable detailed debugging output
         calibrated_cap_maturities=[0.5, 1.5, 2.5, 3.5, 4.5],  # Maturities to calibrate cap volatilities
         calibrated_swaption_exp_mats=[
@@ -46,7 +44,7 @@ def main(calibrate=True, BGM=True):
                [(-np.pi / 2, np.pi / 2)] * 2 * len(selected_maturities),  # Bounds for Theta
         a_breakpoints=[1, 2, 3, 5, 7, 9, 12, 15],  # Breakpoints for A(x) interpolation
         a_param_smoothness_penalty=True,  # Enable penalty for A(x) smoothness
-        a_penalty_threshold=0.0020,  # Threshold for penalizing A(x) parameter jumps
+        a_penalty_threshold=0.0020,  # Threshold for penalizing A(x) parameter jumps to prevent overfitting and exploitation of averages by optimizer
         a_penalty_size=0.03,  # Size of penalty for A(x) parameter jumps
         optimizer_method='TNC',  # Optimization method 'TNC' or 'L-BFGS-B'. 'TNC' takes much longer to calibrate to.
         optimizer_options_dict={
