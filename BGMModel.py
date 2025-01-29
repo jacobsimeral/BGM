@@ -1,24 +1,10 @@
+
 import numpy as np
-import pandas as pd
-from datetime import datetime
-import matplotlib.cm as cm
-import matplotlib.pyplot as plt
-from Shared_Functions import A_function, B_function, C_function, construct_correlation_matrix, create_zero_curve
-import numpy as np
-import pandas as pd
-from datetime import datetime
-from scipy import stats
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from Shared_Functions import A_function, B_function, C_function, construct_correlation_matrix, create_zero_curve
-from scipy.optimize import minimize, brentq
-from scipy.stats import norm
-from scipy.interpolate import CubicSpline
-from scipy.integrate import quad
-import bisect
-import time
-import sys
+
 
 class BGMModel:
     """
@@ -69,7 +55,7 @@ class BGMModel:
     """
     def __init__(self, calibration_types, sofr_curve, agency_curve, maturity, time_step, extend_int_coef, N,
                  mortgage_principal, mortgage_interest_rate, mortgage_term, alpha_cev, mortgage_swap_term_years_dict,
-                 volatility_scaler, spread, swap_rate_factor, preview_index_list, preview_index_list_agency, seed=42, prepayment_base_rate=0.002, use_CEV=True):
+                 volatility_scaler, spread, swap_rate_factor, preview_index_list, preview_index_list_agency, seed=42, prepayment_base_rate=0.002, use_CEV=True, verbose=True):
         self.calibration_types = calibration_types
         self.sofr_curve = sofr_curve
         self.agency_curve = agency_curve
@@ -93,7 +79,8 @@ class BGMModel:
         self.sofr_calib_fwd_rates = []
         self.agency_calib_fwd_rates = []
         self.prepayment_base_rate = prepayment_base_rate
-        self.use_CEV = use_CEV
+        self.use_CEV = use_CEV,
+        self.verbose = verbose
 
     def calculate_mbs_price_with_swap_rates(self, principal, mortgage_interest_rate, mortgage_term_months,
                                             forward_rate_rows_dict, year_frac, agency_curve, spread=0.0,
@@ -109,45 +96,47 @@ class BGMModel:
                                                                                       year_frac,
                                                                                       mortgage_term_months / 12,
                                                                                       list[1])
-        print(f"Forward Rate Rows Dict: {forward_rate_rows_dict}")
         print(forward_rates_from_zero)
         agency_rate_curve = self.interpolate_monthly_rates(zero_curve, mortgage_term_months, year_frac,
                                                       mortgage_term_months / 12, 1, spread=self.spread)
-        print(f"Zero Curve for Discounting: {agency_rate_curve}")
         mbs_price = 0
         monthly_interest_rate = mortgage_interest_rate / 12
         remaining_balance = principal
-        total_monthly_payment = (monthly_interest_rate * principal) / (
-                    1 - (1 + monthly_interest_rate) ** (-mortgage_term_months))
+        total_monthly_payment = ((monthly_interest_rate * principal) /
+                                 (1 - (1 + monthly_interest_rate) ** (-mortgage_term_months)))
+
+        if self.verbose:
+            print(f"Forward Rate Rows Dict: {forward_rate_rows_dict}")
+            print(f"Zero Curve for Discounting: {agency_rate_curve}")
 
         for month in range(0, mortgage_term_months):
             if remaining_balance == 0:
                 break
 
             current_swap_rate = swap_rate_factor * weighted_swap_curve[month - 1]
-
-            print(f"Month: {month}")
             interest_payment = remaining_balance * monthly_interest_rate
             total_monthly_payment = min(total_monthly_payment, remaining_balance + interest_payment)
-            print(f"Total Monthly Payment: {total_monthly_payment}")
-            print(f"Swap Rate: {current_swap_rate}")
             prepayment_rate_adjustment = mortgage_interest_rate - current_swap_rate
-            print(f"Prepayment Rate Adjustment: {prepayment_rate_adjustment}")
             prepayment_rate = max(0, self.prepayment_base_rate + prepayment_rate_adjustment)
-            print(f"Prepayment Rate: {prepayment_rate}")
             principal_payment = min(remaining_balance, total_monthly_payment - interest_payment)
-            print(f"Interest Payment: {interest_payment}")
-            print(f"Principal Payment: {principal_payment}")
             prepayment = min(remaining_balance - principal_payment, remaining_balance * prepayment_rate)
-            print(f"Prepayment: {prepayment}")
             total_payment = principal_payment + prepayment
             total_payment = min(total_payment, remaining_balance)  # Prevent overpayment
-            print(principal + interest_payment)
             remaining_balance -= total_payment
-            print(f"Remaining Balance: {remaining_balance}")
             discount_factor = 1 / np.prod([(1 + (agency_rate_curve[t]) / 12) for t in range(month - 1)])
             mbs_price += ((principal_payment + prepayment + interest_payment) * discount_factor)
-            print(f"MBS Price: {mbs_price}")
+
+            if self.verbose:
+                print(f"Month: {month}")
+                print(f"Total Monthly Payment: {total_monthly_payment}")
+                print(f"Swap Rate: {current_swap_rate}")
+                print(f"Prepayment Rate Adjustment: {prepayment_rate_adjustment}")
+                print(f"Prepayment Rate: {prepayment_rate}")
+                print(f"Interest Payment: {interest_payment}")
+                print(f"Principal Payment: {principal_payment}")
+                print(f"Prepayment: {prepayment}")
+                print(f"Remaining Balance: {remaining_balance}")
+                print(f"MBS Price: {mbs_price}")
 
         return mbs_price
 
@@ -189,8 +178,7 @@ class BGMModel:
         for k in range(steps):
             forward_rate_from_zero[k][0] = (1 / year_frac) * (B_0[k] / B_0[k + 1] - 1)
             if k in global_preview_index_list:
-                print(
-                    f"Spot for {curve_modelled} {(k + 1) * time_step}Y: {zero_curve_for_modelling[k]}\n...with Initial Forward Rate: {forward_rate_from_zero[k][0]}")
+                print(f"Spot for {curve_modelled} {(k + 1) * time_step}Y: {zero_curve_for_modelling[k]}\n...with Initial Forward Rate: {forward_rate_from_zero[k][0]}")
         mbs_prices = []
         all_paths = []
         for _ in range(N // 2):  # Only N//2 simulations as each has an antithetic pair
@@ -265,9 +253,9 @@ class BGMModel:
         base_weights = np.full_like(variance_based_weights, base_weight)
         weights = (0.0 * base_weights + 1.0 * variance_based_weights) / sum(variance_based_weights)
 
-        print(f"Weights: {weights}")
-
-        print(f"Mean Path Payoff: {mean_path_payoff_per_term}")
+        if self.verbose:
+            print(f"Weights: {weights}")
+            print(f"Mean Path Payoff: {mean_path_payoff_per_term}")
         resampled_paths = np.zeros(all_paths[0].shape)
         for i, path in enumerate(all_paths):
             resampled_paths += weights[i] * path

@@ -100,7 +100,8 @@ def main(calibrate=True, BGM=True):
         preview_index_list_agency=[0], # for 0.25 Agency
         seed=42, # random seed is fixed across simulations for testing purposes
         prepayment_base_rate=0.002,
-        use_CEV=True # Determine whether to use CEV lognormal or standard lognormal
+        use_CEV=True, # Determine whether to use CEV lognormal or standard lognormal
+        verbose=True
     )
 
 
