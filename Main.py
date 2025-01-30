@@ -27,9 +27,9 @@ def main(calibrate=True, BGM=True):
             (1.0, 10), (2.0, 10), (3.0, 10), (5.0, 10), (7.0, 10),
             (10.0, 2), (10.0, 3), (10.0, 5), (10.0, 10)
         ],  # Swaption expiration and maturity pairs
-        curve_df=sofr_curve,  # Curve to calibrate (e.g., test_curve, agency_curve, or sofr_curve)
-        curve_string='SOFR',  # Identifier for curve type (e.g., 'TEST', 'SOFR', or 'AGENCY')
-        curve_col_name='SOFR',  # Column in the curve to use for calibration (e.g. SOFR or Agency Spot)
+        curve_df=agency_curve,  # Curve to calibrate (e.g., test_curve, agency_curve, or sofr_curve)
+        curve_string='AGENCY',  # Identifier for curve type (e.g., 'TEST', 'SOFR', or 'AGENCY')
+        curve_col_name='Agency Spot',  # Column in the curve to use for calibration (e.g. SOFR or Agency Spot)
         corr_initial_decay_rate=0.10,  # Initial decay rate for the correlation matrix
         initial_guess=np.array([
                                    0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.01,
@@ -44,16 +44,16 @@ def main(calibrate=True, BGM=True):
                [(-np.pi / 2, np.pi / 2)] * 2 * len(selected_maturities),  # Bounds for Theta
         a_breakpoints=[1, 2, 3, 5, 7, 9, 12, 15],  # Breakpoints for A(x) interpolation
         a_param_smoothness_penalty=True,  # Enable penalty for A(x) smoothness
-        a_penalty_threshold=0.0020,  # Threshold for penalizing A(x) parameter jumps to prevent overfitting and exploitation of averages by optimizer
-        a_penalty_size=0.03,  # Size of penalty for A(x) parameter jumps
-        optimizer_method='TNC',  # Optimization method 'TNC' or 'L-BFGS-B'. 'TNC' takes much longer to calibrate to.
+        a_penalty_threshold=0.0025,  # Threshold for penalizing A(x) parameter jumps to prevent overfitting and exploitation of averages by optimizer
+        a_penalty_size=0.003,  # Size of penalty for A(x) parameter jumps
+        optimizer_method='L-BFGS-B',  # Optimization method 'TNC' or 'L-BFGS-B'. 'TNC' takes much longer to calibrate to.
         optimizer_options_dict={
             'maxiter': 2000,  # Maximum iterations
             'maxfun': 4000,  # Maximum function evaluations
             'disp': True,  # Display optimization progress
-            'ftol': 1e-5,  # Function tolerance
-            'gtol': 1e-5,  # Gradient norm tolerance
-            'eps': 1e-5,  # Step size for gradient approximation
+            'ftol': 1e-7,  # Function tolerance
+            'gtol': 1e-7,  # Gradient norm tolerance
+            'eps': 1e-7,  # Step size for gradient approximation
         },
         atm_strikes={
         '1Y': 4.85,
@@ -112,4 +112,4 @@ def main(calibrate=True, BGM=True):
     pass
 
 if __name__ == "__main__":
-    main(calibrate=True, BGM=False)
+    main(calibrate=False, BGM=True)

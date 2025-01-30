@@ -121,7 +121,7 @@ class BGMModel:
             principal_payment = min(remaining_balance, total_monthly_payment - interest_payment)
             prepayment = min(remaining_balance - principal_payment, remaining_balance * prepayment_rate)
             total_payment = principal_payment + prepayment
-            total_payment = min(total_payment, remaining_balance)  # Prevent overpayment
+            total_payment = min(total_payment, remaining_balance)
             remaining_balance -= total_payment
             discount_factor = 1 / np.prod([(1 + (agency_rate_curve[t]) / 12) for t in range(month - 1)])
             mbs_price += ((principal_payment + prepayment + interest_payment) * discount_factor)

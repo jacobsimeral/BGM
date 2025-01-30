@@ -31,8 +31,8 @@ def A_function(x, a_params, breakpoints=[1, 2, 3, 5, 7, 9, 10, 15]):
         if x <= 15:
             return np.interp(x, x_breakpoints, a_values)
         else:
-            # return a_params[-2] * np.exp(a_params[-1] * (x - 15)) # this is the method I believe Poly may be using in production (growth)
-            return a_params[-2] * np.exp(-a_params[-1] * (x - 15)) # this is the method poly uses in documentation
+            # return a_params[-2] * np.exp(a_params[-1] * (x - 15)) # this is the method I believe may be using in production (growth)
+            return a_params[-2] * np.exp(-a_params[-1] * (x - 15)) # this is the method uses in documentation
             # return a_params[-2]
     except Exception as e:
         print(e)
