@@ -261,15 +261,23 @@ class BGMModel:
             resampled_paths += weights[i] * path
 
         if calculate_mbs_price:
-            forward_rate_rows_dict = {}
-            for term, weight in mortgage_swap_term_years_dict.items():
-                forward_rate_rows_dict[term] = [resampled_paths[int((term / time_step) - 1)], weight]
+            for matrix in all_paths:
+                forward_rate_rows_dict = {}
 
-            mbs_price = self.calculate_mbs_price_with_swap_rates(
-                mortgage_principal, mortgage_interest_rate, mortgage_term,
-                forward_rate_rows_dict, year_frac, zero_curve_for_mbs_discounting, spread=spread,
-                forward_rates_from_zero=forward_rate_from_zero[:, 0], swap_rate_factor=swap_rate_factor)
-            mbs_prices.append(mbs_price)
+                for term, weight in mortgage_swap_term_years_dict.items():
+                    term_index = int((term / time_step) - 1)
+                    forward_rate_rows_dict[term] = [matrix[term_index], weight]
+                    # forward_rate_rows_dict[term] = [resampled_paths[int((term / time_step) - 1)], weight]
+                mbs_price = self.calculate_mbs_price_with_swap_rates(
+                    mortgage_principal, mortgage_interest_rate, mortgage_term,
+                    forward_rate_rows_dict, year_frac, zero_curve_for_mbs_discounting, spread=spread,
+                    forward_rates_from_zero=forward_rate_from_zero[:, 0], swap_rate_factor=swap_rate_factor)
+                mbs_prices.append(mbs_price)
+            weighted_average_price = np.sum(np.array(mbs_prices) * weights)
+            if self.verbose:
+                print(f"Average MBS Price: {np.average(mbs_prices)}")
+                print(f"Weighted Average MBS Price {weighted_average_price}")
+
 
         t_graph = np.arange(0, time_steps - 1)
         self.resampled_paths_dict[calibration_type][curve_modelled] = {}
