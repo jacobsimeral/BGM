@@ -411,8 +411,8 @@ class BGMModel:
                                                               global_preview_index_list=self.preview_index_list_agency,
                                                               calculate_mbs_price=False, curve_modelled='AGENCY')
 
-        zero_curve_for_mbs_discounting = agency_forwards[0, :]  # take 3 month forward agency curve for discounting
-
+        zero_curve_for_mbs_discounting = np.insert(agency_forwards[0, :], 0, zero_curve_for_agency[1])  # take 3 month forward agency curve for discounting append 3month spot rate to front
+        
         forward_rate_matrix, mbs_prices = self.LIBOR_Market_Model(self.time_step, self.maturity, zero_curve_for_modelling,
                                                              zero_curve_for_mbs_discounting, a, b, c, corr_matrix, self.N,
                                                              self.mortgage_interest_rate,
