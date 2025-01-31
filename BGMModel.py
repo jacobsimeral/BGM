@@ -1,5 +1,6 @@
 
 import numpy as np
+import pandas as pd
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
@@ -167,7 +168,7 @@ class BGMModel:
 
         steps = int(maturity / time_step)  # Number of steps per simulation
         term_steps = steps + 1
-        time_steps = extend_int_coef * steps + 2
+        time_steps = extend_int_coef * steps + 1
         terms = np.linspace(time_step, maturity, term_steps - 1)  # Array of terms
         terms_B_0 = np.linspace(0, maturity, term_steps)  # Terms for zero-coupon bonds
         times = np.linspace(0, extend_int_coef * maturity, time_steps)  # Array of times
@@ -238,10 +239,9 @@ class BGMModel:
             all_paths.append(forward_rate_matrix[:, :time_steps - 1])
             all_paths.append(antithetic_forward_rate_matrix[:, :time_steps - 1])
 
-        initial_forward_rate = all_paths[0][:, 0]
-        constant_path = np.tile(initial_forward_rate,
-                                (all_paths[0].shape[1], 1)).T  # Extend constant forward rate across all time steps
-        constant_path_payoff = np.sum(constant_path[-1, :])  # can change resampling to be based on different factors
+        # initial_forward_rate = all_paths[0][:, 0]
+        # constant_path = np.tile(initial_forward_rate, (all_paths[0].shape[1], 1)).T  # Extend constant forward rate across all time steps
+        # constant_path_payoff = np.sum(constant_path[-1, :])  # can change resampling to be based on different factors
         stacked_paths = np.stack(all_paths, axis=0)  # Shape: (num_paths, num_terms, num_time_steps)
         mean_path_payoff_per_term = np.mean(stacked_paths, axis=(0, 2))
         path_payoffs_per_term = np.mean(stacked_paths,
@@ -255,7 +255,6 @@ class BGMModel:
 
         if self.verbose:
             print(f"Weights: {weights}")
-            print(f"Mean Path Payoff: {mean_path_payoff_per_term}")
         resampled_paths = np.zeros(all_paths[0].shape)
         for i, path in enumerate(all_paths):
             resampled_paths += weights[i] * path
@@ -293,7 +292,6 @@ class BGMModel:
             with open(f"Data/Output/LogResampledInfo_{calibration_type}Calibration.txt", 'a') as file:
                 file.write(f"Calibration Type: {calibration_type}\n")
                 file.write(f"{curve_modelled}{float((global_preview_index + 1) * time_step)}Y")
-                file.write(f"Mean Path Payoff: {mean_path_payoff_per_term[global_preview_index]}\n")
                 file.write(f"Weights: {weights}\n")
                 file.write(f"Resampled Paths: {resampled_paths[global_preview_index, :]}\n")
             average_path = np.mean(all_paths, axis=0)
@@ -301,7 +299,8 @@ class BGMModel:
             # plt.plot(t_graph, constant_path[global_preview_index, :], color="blue", linewidth=2, label="Constant Path",alpha=0.5)
             plt.plot(t_graph, resampled_paths[global_preview_index, :], color="red", linewidth=2,
                      label="Resampled Path")
-
+            plt.xlim(0, 360)
+            plt.xticks(np.arange(0, 361, 20))
             plt.title(
                 f"{curve_modelled}{float((global_preview_index + 1) * time_step)}Y Monte Carlo Simulation with Resampling - {calibration_type} Calibration")
             plt.xlabel(f"Time (Months)")

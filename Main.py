@@ -89,7 +89,7 @@ def main(calibrate=True, BGM=True):
         mortgage_principal=100,
         mortgage_interest_rate=0.07, # 7% mortgage rate
         mortgage_term=360, # 30-year mortgage in months
-        alpha_cev=0.85, # assuming (1 - alpha) as the exponent in CEV
+        alpha_cev=0.8, # assuming (1 - alpha) as the exponent in CEV
         mortgage_swap_term_years_dict={2: 0.5, 10: 0.5}, # {term: weight} Pick the forward curves to create weighted swap curve. Make sure the weights sum to 1.
         volatility_scaler=1, # If you want to scale volatility for test purposes
         spread=0.001, # Add to agency to discount cashflows
@@ -112,4 +112,4 @@ def main(calibrate=True, BGM=True):
     pass
 
 if __name__ == "__main__":
-    main(calibrate=False, BGM=True)
+    main(calibrate=True, BGM=False)
