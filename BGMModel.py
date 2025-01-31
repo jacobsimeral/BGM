@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
-from Shared_Functions import A_function, B_function, C_function, construct_correlation_matrix, create_zero_curve
+from Shared_Functions import A_function, B_function, C_function, construct_correlation_matrix, interpolate_spot_curve
 
 
 class BGMModel:
@@ -79,7 +79,7 @@ class BGMModel:
         self.sofr_calib_fwd_rates = []
         self.agency_calib_fwd_rates = []
         self.prepayment_base_rate = prepayment_base_rate
-        self.use_CEV = use_CEV,
+        self.use_CEV = use_CEV
         self.verbose = verbose
 
     def calculate_mbs_price_with_swap_rates(self, principal, mortgage_interest_rate, mortgage_term_months,
@@ -167,7 +167,7 @@ class BGMModel:
 
         steps = int(maturity / time_step)  # Number of steps per simulation
         term_steps = steps + 1
-        time_steps = extend_int_coef * steps + 1
+        time_steps = extend_int_coef * steps + 2
         terms = np.linspace(time_step, maturity, term_steps - 1)  # Array of terms
         terms_B_0 = np.linspace(0, maturity, term_steps)  # Terms for zero-coupon bonds
         times = np.linspace(0, extend_int_coef * maturity, time_steps)  # Array of times
@@ -281,7 +281,7 @@ class BGMModel:
                 print(f"Weighted Average MBS Price {weighted_average_price}")
 
 
-        t_graph = np.arange(0, time_steps - 1)
+        t_graph = np.arange(0, time_steps - 1) * 3
         self.resampled_paths_dict[calibration_type][curve_modelled] = {}
         for global_preview_index in global_preview_index_list:
             term_years = (global_preview_index + 1) * time_step
@@ -298,14 +298,13 @@ class BGMModel:
                 file.write(f"Resampled Paths: {resampled_paths[global_preview_index, :]}\n")
             average_path = np.mean(all_paths, axis=0)
             # plt.plot(t_graph, average_path[global_preview_index, :], color="purple", linewidth=2, label="Average Path")
-            plt.plot(t_graph, constant_path[global_preview_index, :], color="blue", linewidth=2, label="Constant Path",
-                     alpha=0.5)
+            # plt.plot(t_graph, constant_path[global_preview_index, :], color="blue", linewidth=2, label="Constant Path",alpha=0.5)
             plt.plot(t_graph, resampled_paths[global_preview_index, :], color="red", linewidth=2,
                      label="Resampled Path")
 
             plt.title(
                 f"{curve_modelled}{float((global_preview_index + 1) * time_step)}Y Monte Carlo Simulation with Resampling - {calibration_type} Calibration")
-            plt.xlabel(f"Time ({12 * time_step} Month Steps)")
+            plt.xlabel(f"Time (Months)")
             plt.ylabel("Forward Rate")
             plt.legend()
             plt.grid(True)
@@ -401,10 +400,10 @@ class BGMModel:
     def main(self, calibration_type, random_seed):
         a, b, c, theta = self.read_parameters(calibration_type)
         corr_matrix = construct_correlation_matrix(theta)
-        zero_curve_for_sofr = create_zero_curve('SOFR', self.sofr_curve, self.maturity, self.time_step, col_name='SOFR')
-        zero_curve_for_agency = create_zero_curve('AGENCY', self.agency_curve, self.maturity, self.time_step, col_name='Agency Spot')
+        spot_curve_for_sofr = interpolate_spot_curve('SOFR', self.sofr_curve, self.maturity, self.time_step, col_name='SOFR')
+        spot_curve_for_agency = interpolate_spot_curve('AGENCY', self.agency_curve, self.maturity, self.time_step, col_name='Agency Spot')
 
-        agency_forwards, null_mbs_prices = self.LIBOR_Market_Model(self.time_step, self.maturity, zero_curve_for_agency, None, a, b, c,
+        agency_forwards, null_mbs_prices = self.LIBOR_Market_Model(self.time_step, self.maturity, spot_curve_for_agency, None, a, b, c,
                                                               corr_matrix, self.N,
                                                               extend_int_coef=self.extend_int_coef, random_seed=random_seed,
                                                               calibration_type=calibration_type,
@@ -413,10 +412,10 @@ class BGMModel:
                                                               global_preview_index_list=self.preview_index_list_agency,
                                                               calculate_mbs_price=False, curve_modelled='AGENCY')
 
-        zero_curve_for_mbs_discounting = np.insert(agency_forwards[0, :], 0, zero_curve_for_agency[1])  # take 3 month forward agency curve for discounting append 3month spot rate to front
+        forward_curve_for_mbs_discounting = np.insert(agency_forwards[0, :], 0, spot_curve_for_agency[1])  # take 3 month forward agency curve for discounting append 3month spot rate to front
 
-        forward_rate_matrix, mbs_prices = self.LIBOR_Market_Model(self.time_step, self.maturity, zero_curve_for_sofr,
-                                                             zero_curve_for_mbs_discounting, a, b, c, corr_matrix, self.N,
+        forward_rate_matrix, mbs_prices = self.LIBOR_Market_Model(self.time_step, self.maturity, spot_curve_for_sofr,
+                                                             forward_curve_for_mbs_discounting, a, b, c, corr_matrix, self.N,
                                                              self.mortgage_interest_rate,
                                                              mortgage_principal=self.mortgage_principal,
                                                              mortgage_term=self.mortgage_term,
