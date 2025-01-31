@@ -261,6 +261,8 @@ class BGMModel:
             resampled_paths += weights[i] * path
 
         if calculate_mbs_price:
+            # In this iteration we are pulling the 2 and 10Y SOFR Term Rate forward projections to constructs a weighted curve that represents the fixed 30Y mortgage rate.
+            #My other implementation creates a single resampled curve that is used for mortgage repricing (this is still used for the agency curve)
             for matrix in all_paths:
                 forward_rate_rows_dict = {}
 
@@ -282,7 +284,7 @@ class BGMModel:
         t_graph = np.arange(0, time_steps - 1)
         self.resampled_paths_dict[calibration_type][curve_modelled] = {}
         for global_preview_index in global_preview_index_list:
-            term_years = (global_preview_index + 1) * time_step  # Term in years
+            term_years = (global_preview_index + 1) * time_step
             self.resampled_paths_dict[calibration_type][curve_modelled][term_years] = resampled_paths[global_preview_index,
                                                                                  :].copy()
             plt.figure(figsize=(14, 8))
@@ -327,7 +329,7 @@ class BGMModel:
 
         for (curve_modelled, term), calibration_paths in term_curve_dict.items():
             plt.figure(figsize=(14, 8))
-            y_min, y_max = float('inf'), float('-inf')  # Initialize for dynamic range calculation
+            y_min, y_max = float('inf'), float('-inf')
 
             for calibration_type, resampled_path in calibration_paths.items():
                 label = f"{calibration_type} Calibration"
@@ -399,7 +401,7 @@ class BGMModel:
     def main(self, calibration_type, random_seed):
         a, b, c, theta = self.read_parameters(calibration_type)
         corr_matrix = construct_correlation_matrix(theta)
-        zero_curve_for_modelling = create_zero_curve('SOFR', self.sofr_curve, self.maturity, self.time_step, col_name='SOFR')
+        zero_curve_for_sofr = create_zero_curve('SOFR', self.sofr_curve, self.maturity, self.time_step, col_name='SOFR')
         zero_curve_for_agency = create_zero_curve('AGENCY', self.agency_curve, self.maturity, self.time_step, col_name='Agency Spot')
 
         agency_forwards, null_mbs_prices = self.LIBOR_Market_Model(self.time_step, self.maturity, zero_curve_for_agency, None, a, b, c,
@@ -412,8 +414,8 @@ class BGMModel:
                                                               calculate_mbs_price=False, curve_modelled='AGENCY')
 
         zero_curve_for_mbs_discounting = np.insert(agency_forwards[0, :], 0, zero_curve_for_agency[1])  # take 3 month forward agency curve for discounting append 3month spot rate to front
-        
-        forward_rate_matrix, mbs_prices = self.LIBOR_Market_Model(self.time_step, self.maturity, zero_curve_for_modelling,
+
+        forward_rate_matrix, mbs_prices = self.LIBOR_Market_Model(self.time_step, self.maturity, zero_curve_for_sofr,
                                                              zero_curve_for_mbs_discounting, a, b, c, corr_matrix, self.N,
                                                              self.mortgage_interest_rate,
                                                              mortgage_principal=self.mortgage_principal,

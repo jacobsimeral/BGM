@@ -1,4 +1,7 @@
 import datetime
+
+from win32comext.adsi.demos.scp import verbose
+
 from Shared_Functions import A_function, B_function, C_function, construct_correlation_matrix
 import numpy as np
 import pandas as pd
@@ -205,20 +208,24 @@ class BGMCalibration:
 
         return theta.flatten()
 
-    def calibrate_vol_surface(self, cap_vols, swaption_vols, zero_curve, maturities, discount_factors, time_step, initial_guess, bounds):
-        num_maturities = len(maturities) # attempting without subtracting 1
+    def calibrate_vol_surface(self, cap_vols, swaption_vols, spot_curve, maturities, discount_factors, time_step, initial_guess, bounds):
+        num_maturities = len(maturities)
         base_level = 1.0
         # Start using thetas that produce a correlation matrix with exponential decay assumption
         adjusted_theta = self.refine_theta_for_exponential_decay(num_maturities, base_level, self.corr_initial_decay_rate)
         initial_guess[-2 * (num_maturities):] = adjusted_theta
         steps = int(maturities[-1] / time_step) + 1
         maturity_times = np.linspace(0, maturities[-1], steps)
-        zero_curve_filtered = np.interp(maturity_times, maturities, zero_curve)
-        B_0 = np.exp(-zero_curve_filtered * maturity_times)
+        cubic_spline = CubicSpline(maturities, spot_curve)
+        spot_curve_filtered = cubic_spline(maturity_times)
+        B_0 = np.exp(-spot_curve_filtered * maturity_times)
         forward_rate_from_zero = np.zeros((steps - 1, steps - 1))
         for i in range(steps - 1):
             forward_rate_from_zero[i][0] = (1 / time_step) * (B_0[i] / B_0[i + 1] - 1)
-        print(f"Curve Used {self.curve_string}: {forward_rate_from_zero[:,0]}")
+        if verbose:
+            print(f"Interpolated Spot Curve: {spot_curve_filtered}")
+            print(f"Zero Curve: {B_0}")
+            print(f"Initial Forwards {self.curve_string}: {forward_rate_from_zero[:,0]}")
         def optimization_function(params):
             a_params = params[:9]
 

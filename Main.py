@@ -27,9 +27,9 @@ def main(calibrate=True, BGM=True):
             (1.0, 10), (2.0, 10), (3.0, 10), (5.0, 10), (7.0, 10),
             (10.0, 2), (10.0, 3), (10.0, 5), (10.0, 10)
         ],  # Swaption expiration and maturity pairs
-        curve_df=agency_curve,  # Curve to calibrate (e.g., test_curve, agency_curve, or sofr_curve)
-        curve_string='AGENCY',  # Identifier for curve type (e.g., 'TEST', 'SOFR', or 'AGENCY')
-        curve_col_name='Agency Spot',  # Column in the curve to use for calibration (e.g. SOFR or Agency Spot)
+        curve_df=sofr_curve,  # Curve to calibrate (e.g., test_curve, agency_curve, or sofr_curve)
+        curve_string='SOFR',  # Identifier for curve type (e.g., 'TEST', 'SOFR', or 'AGENCY')
+        curve_col_name='SOFR',  # Column in the curve to use for calibration (e.g. SOFR or Agency Spot)
         corr_initial_decay_rate=0.10,  # Initial decay rate for the correlation matrix
         initial_guess=np.array([
                                    0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.01,
@@ -112,4 +112,4 @@ def main(calibrate=True, BGM=True):
     pass
 
 if __name__ == "__main__":
-    main(calibrate=False, BGM=True)
+    main(calibrate=True, BGM=False)

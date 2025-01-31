@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.interpolate import CubicSpline
 from scipy.interpolate import interp1d
 
 def construct_correlation_matrix(theta):
@@ -55,19 +56,18 @@ def C_function(t, c_params):
     """
     return c_params[0] + (1 - c_params[0]) * (1 - np.exp(-t * c_params[1]))
 
+
 def create_zero_curve(curve_used, curve, max_maturity, time_step, col_name=''):
     """
     :param curve_used: for determining the column name in the dataframe and for naming conventions elsewhere
     :param curve: the curve dataframe with a column for term and for rate
     :param max_maturity: if you want to forecast 10 yrs put 10
     :param time_step: in years. For half-year increments put 0.5
-    :param calibration: boolean to determine whether you are calibrating or running model
     :return: zero curve interpolated and filtered
     """
-    new_ttm = np.arange(0, 30 + time_step, time_step)
-    selected_maturities = np.arange(0, max_maturity + time_step, time_step)
-    selected_indices = [i for i, ttm in enumerate(selected_maturities) if ttm in selected_maturities]
+    new_ttm = np.arange(0, max_maturity + time_step, time_step)
     terms = curve['Term'].values
     rates = curve[col_name].values / 100
-    zero_curve_filtered = np.interp(new_ttm[selected_indices], terms, rates)
+    spline = CubicSpline(terms, rates)
+    zero_curve_filtered = spline(new_ttm)
     return zero_curve_filtered
