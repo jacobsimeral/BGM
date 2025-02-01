@@ -1,6 +1,4 @@
-
 import numpy as np
-import pandas as pd
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
@@ -14,45 +12,25 @@ class BGMModel:
 
     Parameters:
     ----------
-    calibration_types : list of str
-        List of calibration types (e.g., ['AGENCY', 'SOFR', 'TEST']) for input files.
-    sofr_curve : pd.DataFrame
-        DataFrame containing the SOFR curve data.
-    agency_curve : pd.DataFrame
-        DataFrame containing the agency curve data.
-    test_curve : pd.DataFrame
-        DataFrame containing the test curve data.
-    maturity : float
-        The highest term to model (e.g., 10 years for SOFR 0-10Y).
-    time_step : float
-        The time step in years used during calibration (e.g., 0.25 for quarterly steps).
-    extend_int_coef : int
-        Coefficient to extend the forecast horizon (e.g., 3 for 30 years if data spans 10 years).
-    N : int
-        Number of Monte Carlo paths for simulations. Half of these are used for antithetic sampling.
-    mortgage_principal : float
-        The principal amount for the mortgage (e.g., $100).
-    mortgage_interest_rate : float
-        The annual interest rate on the mortgage (e.g., 0.07 for 7%).
-    mortgage_term : int
-        The term of the mortgage in months (e.g., 360 for a 30-year mortgage).
-    alpha_cev : float
-        CEV (Constant Elasticity of Variance) parameter exponent (1 - alpha) to control volatility.
-    mortgage_swap_term_years_dict : dict
-        A dictionary specifying swap terms and their weights (e.g., {2: 0.5, 10: 0.5}).
-        The weights must sum to 1.
-    volatility_scaler : float
-        A scaling factor to adjust volatility during simulations (useful for testing).
-    spread : float
-        Spread to add to the agency curve for discounting cashflows (e.g., 0.001).
-    swap_rate_factor : float
-        A factor to adjust the weighted swap curve to account for primary-secondary spread in a simplified model.
-    preview_index_list : list of int
-        List of index positions to preview for forward rates (e.g., [7, 39] for 2- and 10-year SOFR).
-    preview_index_list_agency : list of int
-        List of index positions to preview for the agency curve (e.g., [0] for 0.25 Agency).
-    seed : int, optional
-        Random seed for reproducibility in Monte Carlo simulations (default is 42).
+    calibration_types : list of str List of calibration types (e.g., ['AGENCY', 'SOFR', 'TEST']) for input files.
+    sofr_curve : pd.DataFrame containing the SOFR curve data.
+    agency_curve : pd.DataFrame containing the agency curve data.
+    test_curve : pd.DataFrame containing the test curve data.
+    maturity : float The highest term to model (e.g., 10 years for SOFR 0-10Y).
+    time_step : float The time step in years used during calibration (e.g., 0.25 for quarterly steps).
+    extend_int_coef : int Coefficient to extend the forecast horizon (e.g., 3 for 30 years if data spans 10 years).
+    N : int Number of Monte Carlo paths for simulations. Half of these are used for antithetic sampling.
+    mortgage_principal : float The principal amount for the mortgage (e.g., $100).
+    mortgage_interest_rate : float The annual interest rate on the mortgage (e.g., 0.07 for 7%).
+    mortgage_term : int The term of the mortgage in months (e.g., 360 for a 30-year mortgage).
+    alpha_cev : float CEV (Constant Elasticity of Variance) parameter exponent (1 - alpha) to control volatility.
+    mortgage_swap_term_years_dict : dict A dictionary specifying swap terms and their weights (e.g., {2: 0.5, 10: 0.5}). The weights must sum to 1.
+    volatility_scaler : float A scaling factor to adjust volatility during simulations (useful for testing). \
+    spread : float Spread to add to the agency curve for discounting cashflows (e.g., 0.001).
+    swap_rate_factor : float A factor to adjust the weighted swap curve to account for primary-secondary spread in a simplified model.
+    preview_index_list : list of int List of index positions to preview for forward rates (e.g., [7, 39] for 2- and 10-year SOFR).
+    preview_index_list_agency : list of int List of index positions to preview for the agency curve (e.g., [0] for 0.25 Agency).
+    seed : int, optional Random seed for reproducibility in Monte Carlo simulations (default is 42).
     """
     def __init__(self, calibration_types, sofr_curve, agency_curve, maturity, time_step, extend_int_coef, N,
                  mortgage_principal, mortgage_interest_rate, mortgage_term, alpha_cev, mortgage_swap_term_years_dict,
@@ -97,7 +75,6 @@ class BGMModel:
                                                                                       year_frac,
                                                                                       mortgage_term_months / 12,
                                                                                       list[1])
-        print(forward_rates_from_zero)
         agency_rate_curve = self.interpolate_monthly_rates(zero_curve, mortgage_term_months, year_frac,
                                                       mortgage_term_months / 12, 1, spread=self.spread)
         mbs_price = 0
@@ -150,22 +127,22 @@ class BGMModel:
         adjusted_monthly_rates = (monthly_rates + spread) * weight
         return adjusted_monthly_rates
 
-    def LIBOR_Market_Model(self,
+    def Forward_Market_Model(self,
             time_step, maturity, zero_curve_for_modelling, zero_curve_for_mbs_discounting, a_params, b_params, c_params,
             correlation_matrix, N, mortgage_interest_rate=0.07,
-            mortgage_principal=1000000, mortgage_term=360, extend_int_coef=1,
+            mortgage_principal=100, mortgage_term=360, extend_int_coef=1,
             random_seed=42, calibration_type='SOFR', mortgage_swap_term_years_dict=None,
-            spread=0.0, vol_factor=1, swap_rate_factor=1, use_CEV=False, alpha_cev=0.2, global_preview_index_list=[0],
+            spread=0.0, vol_factor=1, swap_rate_factor=1.5, use_CEV=False, alpha_cev=0.2, global_preview_index_list=[0],
             calculate_mbs_price=True, curve_modelled=''):
         """
-        LIBOR Market Model implementation with Monte Carlo simulation and antithetic/quadratic resampling.
+        Forward Market Model implementation with Monte Carlo simulation and antithetic/quadratic resampling.
         Allows toggling between the standard log-normal SDE and the CEV model.
         """
 
         plt.figure(figsize=(12, 8))  # Set up a graph for the Monte Carlo paths
         colors = cm.viridis(np.linspace(0, 1, N))  # Set a range of colors for paths
         np.random.seed(random_seed)  # Fix the random seed for reproducibility
-
+        extend_increment = 0
         steps = int(maturity / time_step)  # Number of steps per simulation
         term_steps = steps + 1
         time_steps = extend_int_coef * steps + 1
@@ -188,7 +165,7 @@ class BGMModel:
 
             for J in range(0, time_steps - (extend_int_coef - 1)):  # Iterate over all time steps
                 # if J % (term_steps - 1) == 0:
-                # extend_increment += 1
+                extend_increment += 1
                 # j = J if J < (term_steps - 1) else J - (extend_increment - 1) * (term_steps - 1)
 
                 for k in range(term_steps - 1):  # Iterate over each term
@@ -402,7 +379,7 @@ class BGMModel:
         spot_curve_for_sofr = interpolate_spot_curve('SOFR', self.sofr_curve, self.maturity, self.time_step, col_name='SOFR')
         spot_curve_for_agency = interpolate_spot_curve('AGENCY', self.agency_curve, self.maturity, self.time_step, col_name='Agency Spot')
 
-        agency_forwards, null_mbs_prices = self.LIBOR_Market_Model(self.time_step, self.maturity, spot_curve_for_agency, None, a, b, c,
+        agency_forwards, null_mbs_prices = self.Forward_Market_Model(self.time_step, self.maturity, spot_curve_for_agency, None, a, b, c,
                                                               corr_matrix, self.N,
                                                               extend_int_coef=self.extend_int_coef, random_seed=random_seed,
                                                               calibration_type=calibration_type,
@@ -413,7 +390,7 @@ class BGMModel:
 
         forward_curve_for_mbs_discounting = np.insert(agency_forwards[0, :], 0, spot_curve_for_agency[1])  # take 3 month forward agency curve for discounting append 3month spot rate to front
 
-        forward_rate_matrix, mbs_prices = self.LIBOR_Market_Model(self.time_step, self.maturity, spot_curve_for_sofr,
+        forward_rate_matrix, mbs_prices = self.Forward_Market_Model(self.time_step, self.maturity, spot_curve_for_sofr,
                                                              forward_curve_for_mbs_discounting, a, b, c, corr_matrix, self.N,
                                                              self.mortgage_interest_rate,
                                                              mortgage_principal=self.mortgage_principal,
@@ -432,8 +409,8 @@ class BGMModel:
 
     def run(self):
         for i in range(len(self.calibration_types)):
-            with open(f"Data/Output/LogResampledInfo_{self.calibration_types[i]}Calibration.txt", 'w') as file:
-                pass  # This clears the file content
+            with open(f"Data/Output/LogResampledInfo_{self.calibration_types[i]}Calibration.txt", 'w') as _:
+                pass
             print(f"{self.calibration_types[i]} Calibration")
             fw_rates = self.main(self.calibration_types[i], self.seed)
         self.plot_resampled_paths_by_term(self.resampled_paths_dict)

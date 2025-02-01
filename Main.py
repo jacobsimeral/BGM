@@ -112,4 +112,4 @@ def main(calibrate=True, BGM=True):
     pass
 
 if __name__ == "__main__":
-    main(calibrate=True, BGM=False)
+    main(calibrate=False, BGM=True)
