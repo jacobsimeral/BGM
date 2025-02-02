@@ -42,14 +42,16 @@ def A_function(x, a_params, breakpoints=[1, 2, 3, 5, 7, 9, 10, 15]):
 
 def B_function(T, b_params):
     """
+    My belief here is that the maturity should be used in the calibration but in the simulation it should stay fixed at the time step.
     :param T: maturity
     :param b_params: a base and a lambda for the exponential decay
-    :return: 1 + (1 - b_params[0]) * np.exp(-T * b_params[1])
+    :return: 1 + (1 - b_params[0]) * (1 - np.exp(-T * b_params[1]))
     """
-    return b_params[0] + (1 - b_params[0]) * np.exp(-T * b_params[1])
+    return b_params[0] + (1 - b_params[0]) * (1 - np.exp(-T * b_params[1]))
 
 def C_function(t, c_params):
     """
+    I want the uncertainties to resolve themselves over time
     :param t: current time
     :param c_params: a base and a lambda for the exponential growth
     :return: c_params[0] + (1 - c_params[0]) * (1 - np.exp(-t * c_params[1]))

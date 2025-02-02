@@ -142,7 +142,7 @@ class BGMModel:
         plt.figure(figsize=(12, 8))  # Set up a graph for the Monte Carlo paths
         colors = cm.viridis(np.linspace(0, 1, N))  # Set a range of colors for paths
         np.random.seed(random_seed)  # Fix the random seed for reproducibility
-        extend_increment = 0
+        # extend_increment = 0
         steps = int(maturity / time_step)  # Number of steps per simulation
         term_steps = steps + 1
         time_steps = extend_int_coef * steps + 1
@@ -165,7 +165,7 @@ class BGMModel:
 
             for J in range(0, time_steps - (extend_int_coef - 1)):  # Iterate over all time steps
                 # if J % (term_steps - 1) == 0:
-                extend_increment += 1
+                # extend_increment += 1
                 # j = J if J < (term_steps - 1) else J - (extend_increment - 1) * (term_steps - 1)
 
                 for k in range(term_steps - 1):  # Iterate over each term
@@ -174,7 +174,8 @@ class BGMModel:
                     T_k = terms[k]
                     A_x_k = A_function(times[J], a_params)
                     # A_x_k = A_function((maturity * extend_int_coef) - times[J], a_params)
-                    B_T_k = B_function(T_k, b_params)
+                    B_T_k = B_function(time_step, b_params) # I changed B function to be equal to time step since the maturity of each individual rate we calculate is equal to time step
+                    # B_T_k = B_function(T_k, b_params)
                     C_t = C_function(times[J], c_params)
                     fwd_rate_vol = vol_factor * A_x_k * B_T_k * C_t
 
@@ -184,7 +185,8 @@ class BGMModel:
                         A_x_i = A_function(times[J], a_params)
                         # A_x_i = A_function((maturity * extend_int_coef) - times[J], a_params)
                         # We are operating under the assumption that A parameters show the snapshot view of volatility over the entire timeline rather than within a specific term interval
-                        B_T_i = B_function(T_i, b_params)
+                        B_T_i = B_function(time_step, b_params)  # I changed B function to be equal to time step since the maturity of each individual rate we calculate is equal to time step
+                        # B_T_i = B_function(T_i, b_params)
                         sum1 += ((vol_factor * A_x_i * B_T_i * C_t * correlation_matrix[i, k] *
                                   (year_frac * forward_rate_matrix[i][J] ** (1 - alpha_cev))) / (
                                              1 + year_frac * forward_rate_matrix[i][J]))
@@ -235,7 +237,7 @@ class BGMModel:
         resampled_paths = np.zeros(all_paths[0].shape)
         for i, path in enumerate(all_paths):
             resampled_paths += weights[i] * path
-
+        weighted_average_price = None
         if calculate_mbs_price:
             # In this iteration we are pulling the 2 and 10Y SOFR Term Rate forward projections to constructs a weighted curve that represents the fixed 30Y mortgage rate.
             #My other implementation creates a single resampled curve that is used for mortgage repricing (this is still used for the agency curve)
@@ -265,7 +267,7 @@ class BGMModel:
                                                                                  :].copy()
             plt.figure(figsize=(14, 8))
             for i, path in enumerate(all_paths):
-                plt.plot(t_graph, path[global_preview_index, :], color=colors[i], alpha=0.3, linewidth=2)
+                plt.plot(t_graph, path[global_preview_index, :], color=colors[i], alpha=0.3, linewidth=3)
             with open(f"Data/Output/LogResampledInfo_{calibration_type}Calibration.txt", 'a') as file:
                 file.write(f"Calibration Type: {calibration_type}\n")
                 file.write(f"{curve_modelled}{float((global_preview_index + 1) * time_step)}Y")
@@ -287,7 +289,7 @@ class BGMModel:
             plt.show()
         all_paths.clear()
 
-        return resampled_paths, mbs_prices
+        return resampled_paths, mbs_prices, weighted_average_price
 
     def plot_resampled_paths_by_term(self, resampled_paths_dict):
         colors = {'SOFR': 'blue', 'AGENCY': 'green', 'TEST': 'orange'}
@@ -379,7 +381,7 @@ class BGMModel:
         spot_curve_for_sofr = interpolate_spot_curve('SOFR', self.sofr_curve, self.maturity, self.time_step, col_name='SOFR')
         spot_curve_for_agency = interpolate_spot_curve('AGENCY', self.agency_curve, self.maturity, self.time_step, col_name='Agency Spot')
 
-        agency_forwards, null_mbs_prices = self.Forward_Market_Model(self.time_step, self.maturity, spot_curve_for_agency, None, a, b, c,
+        agency_forwards, _, _ = self.Forward_Market_Model(self.time_step, self.maturity, spot_curve_for_agency, None, a, b, c,
                                                               corr_matrix, self.N,
                                                               extend_int_coef=self.extend_int_coef, random_seed=random_seed,
                                                               calibration_type=calibration_type,
@@ -390,7 +392,7 @@ class BGMModel:
 
         forward_curve_for_mbs_discounting = np.insert(agency_forwards[0, :], 0, spot_curve_for_agency[1])  # take 3 month forward agency curve for discounting append 3month spot rate to front
 
-        forward_rate_matrix, mbs_prices = self.Forward_Market_Model(self.time_step, self.maturity, spot_curve_for_sofr,
+        forward_rate_matrix, mbs_prices, w_avg_mbs_price = self.Forward_Market_Model(self.time_step, self.maturity, spot_curve_for_sofr,
                                                              forward_curve_for_mbs_discounting, a, b, c, corr_matrix, self.N,
                                                              self.mortgage_interest_rate,
                                                              mortgage_principal=self.mortgage_principal,
@@ -402,9 +404,13 @@ class BGMModel:
                                                              use_CEV=self.use_CEV, alpha_cev=self.alpha_cev,
                                                              global_preview_index_list=self.preview_index_list,
                                                              calculate_mbs_price=True, curve_modelled='SOFR')
-        np.savetxt('Data/Output/' + calibration_type + '_Forward_Rates.txt', forward_rate_matrix, delimiter=',',
+        output_file_path = 'Data/Output/' + calibration_type + '_MBS_Prices.txt'
+        np.savetxt(output_file_path, forward_rate_matrix, delimiter=',',
                    fmt='%f')
-        np.savetxt('Data/Output/' + calibration_type + '_MBS_Prices.txt', mbs_prices, delimiter=',', fmt='%f')
+        with open(output_file_path, 'w') as file:
+            file.write(f'Resampled Average Price: {w_avg_mbs_price}\n')
+            for price in mbs_prices:
+                file.write(f'{price}\n')
         return forward_rate_matrix, mbs_prices
 
     def run(self):

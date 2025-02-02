@@ -2,14 +2,17 @@ import pandas as pd
 import numpy as np
 import Calibration
 import BGMModel
+import uuid
 
 
 def main(calibrate=True, BGM=True):
     sofr_curve = pd.read_csv('Data/Input/SOFR curve.csv')
     agency_curve = pd.read_csv('Data/Input/Agency curve.csv')
     test_curve = pd.read_csv('Data/Input/test_curve.csv')
+
     max_maturity = 20 # Highest maturity to calibrate (e.g., 20 years)
     time_step = 1/2  # Semi-annual time step, faster than 1/4 considering none of our instruments fall in a quarter year increment that is not also a half year.
+
     max_maturity_ceil = max_maturity + (2 * time_step)
     selected_maturities = list(np.arange(0, max_maturity_ceil, time_step))
     """
@@ -96,7 +99,7 @@ def main(calibrate=True, BGM=True):
         swap_rate_factor=1.5, # what you multiply the weighted swap curve by to account for lack of primary secondary spread in simplified model
         preview_index_list=[7, 39], # for 2 and 10 year SOFR
         preview_index_list_agency=[0], # for 0.25 Agency
-        seed=42, # random seed is fixed across simulations for testing purposes
+        seed=uuid.uuid4().int & (2**32 - 1) , # random seed is fixed across simulations for testing purposes
         prepayment_base_rate=0.002,
         use_CEV=True, # Determine whether to use CEV lognormal or standard lognormal
         verbose=True
