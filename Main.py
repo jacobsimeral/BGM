@@ -30,12 +30,12 @@ def main(calibrate=True, BGM=True):
             (1.0, 10), (2.0, 10), (3.0, 10), (5.0, 10), (7.0, 10),
             (10.0, 2), (10.0, 3), (10.0, 5), (10.0, 10)
         ],  # Swaption expiration and maturity pairs
-        curve_df=sofr_curve,  # Curve to calibrate (e.g., test_curve, agency_curve, or sofr_curve)
-        curve_string='SOFR',  # Identifier for curve type (e.g., 'TEST', 'SOFR', or 'AGENCY')
-        curve_col_name='SOFR',  # Column in the curve to use for calibration (e.g. SOFR or Agency Spot)
+        curve_df=test_curve,  # Curve to calibrate (e.g., test_curve, agency_curve, or sofr_curve)
+        curve_string='TEST',  # Identifier for curve type (e.g., 'TEST', 'SOFR', or 'AGENCY')
+        curve_col_name='Agency Spot',  # Column in the curve to use for calibration (e.g. SOFR or Agency Spot)
         corr_initial_decay_rate=0.10,  # Initial decay rate for the correlation matrix
         initial_guess=np.array([
-                                   0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.003, 0.01,
+                                   0.005, 0.001, 0.003, 0.006, 0.005, 0.002, 0.005, 0.003, 0.01,
                                    # A(x) parameters for TTM 0-15
                                    0.90, 0.3,  # B(T) parameters: base level and lambda
                                    0.90, 0.3,  # C(t) parameters: base level and lambda
@@ -82,7 +82,7 @@ def main(calibrate=True, BGM=True):
     """
 
     bgm_model = BGMModel.BGMModel(
-        calibration_types=['AGENCY', 'SOFR', 'TEST'],  # File header information (pulls calibration file), sofr_curve, agency_curve, test_curve,
+        calibration_types=['SOFR', 'AGENCY'],  # ['AGENCY', 'SOFR', 'TEST'] File header information (pulls calibration file), sofr_curve, agency_curve, test_curve,
         sofr_curve=sofr_curve, # for forecasting a 30Y fixed mortgage rate
         agency_curve=agency_curve, # for discounting
         maturity=10.0,  # Highest term necessary to model. i.e. I only care about SOFR 0-10Y
@@ -99,7 +99,7 @@ def main(calibrate=True, BGM=True):
         swap_rate_factor=1.5, # what you multiply the weighted swap curve by to account for lack of primary secondary spread in simplified model
         preview_index_list=[7, 39], # for 2 and 10 year SOFR
         preview_index_list_agency=[0], # for 0.25 Agency
-        seed=uuid.uuid4().int & (2**32 - 1) , # random seed is fixed across simulations for testing purposes
+        seed=42,      # uuid.uuid4().int & (2**32 - 1) , # random seed is fixed across simulations for testing purposes
         prepayment_base_rate=0.002,
         use_CEV=True, # Determine whether to use CEV lognormal or standard lognormal
         verbose=True

@@ -61,9 +61,22 @@ class BGMModel:
         self.use_CEV = use_CEV
         self.verbose = verbose
 
+    def compute_resampling_weights(self, all_paths):
+        stacked_paths = np.stack(all_paths, axis=0)  # Shape: (num_paths, num_terms, num_time_steps)
+        mean_path_payoff_per_term = np.mean(stacked_paths, axis=(0, 2))
+        path_payoffs_per_term = np.mean(stacked_paths,
+                                        axis=2)  # Average over time steps for each path and term (shape: num_paths x num_terms)
+        abs_diffs = np.abs(path_payoffs_per_term - mean_path_payoff_per_term)
+        weights_per_term = 1 / (abs_diffs + 1e-6)
+        variance_based_weights = np.mean(weights_per_term, axis=1)
+        base_weight = 1 / len(all_paths)
+        base_weights = np.full_like(variance_based_weights, base_weight)
+        weights = (0.0 * base_weights + 1.0 * variance_based_weights) / sum(variance_based_weights)
+        return weights
+
     def calculate_mbs_price_with_swap_rates(self, principal, mortgage_interest_rate, mortgage_term_months,
                                             forward_rate_rows_dict, year_frac, agency_curve, spread=0.0,
-                                            forward_rates_from_zero=None, swap_rate_factor=1):
+                                            forward_rates_from_zero=None, swap_rate_factor=1.0):
         zero_curve = agency_curve
         weighted_swap_curve = None
         for i, (term, list) in enumerate(forward_rate_rows_dict.items()):
@@ -128,19 +141,18 @@ class BGMModel:
         return adjusted_monthly_rates
 
     def Forward_Market_Model(self,
-            time_step, maturity, zero_curve_for_modelling, zero_curve_for_mbs_discounting, a_params, b_params, c_params,
-            correlation_matrix, N, mortgage_interest_rate=0.07,
-            mortgage_principal=100, mortgage_term=360, extend_int_coef=1,
-            random_seed=42, calibration_type='SOFR', mortgage_swap_term_years_dict=None,
-            spread=0.0, vol_factor=1, swap_rate_factor=1.5, use_CEV=False, alpha_cev=0.2, global_preview_index_list=[0],
-            calculate_mbs_price=True, curve_modelled=''):
+                             time_step, maturity, zero_curve_for_modelling, zero_curve_for_mbs_discounting, a_params, b_params, c_params,
+                             correlation_matrix, N, mortgage_interest_rate=0.07, mortgage_principal=100, mortgage_term=360, extend_int_coef=1,
+                             random_seed=42, calibration_type='SOFR', mortgage_swap_term_years_dict=None, spread=0.0, vol_factor=1,
+                             swap_rate_factor=1.5, use_CEV=False, alpha_cev=0.2, global_preview_index_list=None, calculate_mbs_price=True, curve_modelled=''):
         """
         Forward Market Model implementation with Monte Carlo simulation and antithetic/quadratic resampling.
         Allows toggling between the standard log-normal SDE and the CEV model.
         """
 
+        if global_preview_index_list is None:
+            global_preview_index_list = [0]
         plt.figure(figsize=(12, 8))  # Set up a graph for the Monte Carlo paths
-        colors = cm.viridis(np.linspace(0, 1, N))  # Set a range of colors for paths
         np.random.seed(random_seed)  # Fix the random seed for reproducibility
         # extend_increment = 0
         steps = int(maturity / time_step)  # Number of steps per simulation
@@ -205,7 +217,6 @@ class BGMModel:
                         # Standard log-normal form
                         drift_term = sum1 - ((fwd_rate_vol ** 2) / 2)
                         stochastic_term = fwd_rate_vol * w * np.sqrt(year_frac)
-
                     ln_fwd_rate += (drift_term * year_frac) + stochastic_term
                     forward_rate_matrix[k][J + 1] = np.exp(ln_fwd_rate)
 
@@ -221,16 +232,7 @@ class BGMModel:
         # initial_forward_rate = all_paths[0][:, 0]
         # constant_path = np.tile(initial_forward_rate, (all_paths[0].shape[1], 1)).T  # Extend constant forward rate across all time steps
         # constant_path_payoff = np.sum(constant_path[-1, :])  # can change resampling to be based on different factors
-        stacked_paths = np.stack(all_paths, axis=0)  # Shape: (num_paths, num_terms, num_time_steps)
-        mean_path_payoff_per_term = np.mean(stacked_paths, axis=(0, 2))
-        path_payoffs_per_term = np.mean(stacked_paths,
-                                        axis=2)  # Average over time steps for each path and term (shape: num_paths x num_terms)
-        abs_diffs = np.abs(path_payoffs_per_term - mean_path_payoff_per_term)
-        weights_per_term = 1 / (abs_diffs + 1e-6)
-        variance_based_weights = np.mean(weights_per_term, axis=1)
-        base_weight = 1 / len(all_paths)
-        base_weights = np.full_like(variance_based_weights, base_weight)
-        weights = (0.0 * base_weights + 1.0 * variance_based_weights) / sum(variance_based_weights)
+        weights = self.compute_resampling_weights(all_paths)
 
         if self.verbose:
             print(f"Weights: {weights}")
@@ -257,23 +259,28 @@ class BGMModel:
             if self.verbose:
                 print(f"Average MBS Price: {np.average(mbs_prices)}")
                 print(f"Weighted Average MBS Price {weighted_average_price}")
+        self.plot_simulated_paths(resampled_paths, all_paths, weights, time_steps, calibration_type, curve_modelled, global_preview_index_list)
+        all_paths.clear()
+        return resampled_paths, mbs_prices, weighted_average_price
 
 
+    def plot_simulated_paths(self, resampled_paths, all_paths, weights, time_steps, calibration_type, curve_modelled, global_preview_index_list):
+        colors = cm.viridis(np.linspace(0, 1, self.N))
         t_graph = np.arange(0, time_steps - 1) * 3
         self.resampled_paths_dict[calibration_type][curve_modelled] = {}
         for global_preview_index in global_preview_index_list:
-            term_years = (global_preview_index + 1) * time_step
+            term_years = (global_preview_index + 1) * self.time_step
             self.resampled_paths_dict[calibration_type][curve_modelled][term_years] = resampled_paths[global_preview_index,
                                                                                  :].copy()
             plt.figure(figsize=(14, 8))
             for i, path in enumerate(all_paths):
-                plt.plot(t_graph, path[global_preview_index, :], color=colors[i], alpha=0.3, linewidth=3)
+                plt.plot(t_graph, path[global_preview_index, :], color=colors[i], alpha=0.3, linewidth=2.5)
             with open(f"Data/Output/LogResampledInfo_{calibration_type}Calibration.txt", 'a') as file:
                 file.write(f"Calibration Type: {calibration_type}\n")
-                file.write(f"{curve_modelled}{float((global_preview_index + 1) * time_step)}Y")
+                file.write(f"{curve_modelled}{float((global_preview_index + 1) * self.time_step)}Y")
                 file.write(f"Weights: {weights}\n")
                 file.write(f"Resampled Paths: {resampled_paths[global_preview_index, :]}\n")
-            average_path = np.mean(all_paths, axis=0)
+            # average_path = np.mean(all_paths, axis=0)
             # plt.plot(t_graph, average_path[global_preview_index, :], color="purple", linewidth=2, label="Average Path")
             # plt.plot(t_graph, constant_path[global_preview_index, :], color="blue", linewidth=2, label="Constant Path",alpha=0.5)
             plt.plot(t_graph, resampled_paths[global_preview_index, :], color="red", linewidth=2,
@@ -281,15 +288,16 @@ class BGMModel:
             plt.xlim(0, 360)
             plt.xticks(np.arange(0, 361, 20))
             plt.title(
-                f"{curve_modelled}{float((global_preview_index + 1) * time_step)}Y Monte Carlo Simulation with Resampling - {calibration_type} Calibration")
+                f"{curve_modelled}{float((global_preview_index + 1) * self.time_step)}Y Monte Carlo Simulation with Resampling - {calibration_type} Calibration")
             plt.xlabel(f"Time (Months)")
             plt.ylabel("Forward Rate")
             plt.legend()
             plt.grid(True)
+            has_valid_data = not (resampled_paths[global_preview_index, :].all() == 0)
+            if has_valid_data:
+                plt.show()
             plt.show()
-        all_paths.clear()
-
-        return resampled_paths, mbs_prices, weighted_average_price
+            plt.close()
 
     def plot_resampled_paths_by_term(self, resampled_paths_dict):
         colors = {'SOFR': 'blue', 'AGENCY': 'green', 'TEST': 'orange'}

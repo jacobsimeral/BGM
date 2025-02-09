@@ -1,16 +1,12 @@
 import datetime
-
 from win32comext.adsi.demos.scp import verbose
-
 from Shared_Functions import A_function, B_function, C_function, construct_correlation_matrix
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 from scipy.interpolate import CubicSpline, PchipInterpolator
-from scipy.integrate import quad
 import bisect
 import time
-import matplotlib.pyplot as plt
 np.set_printoptions(threshold=1000)
 
 
@@ -226,6 +222,7 @@ class BGMCalibration:
             print(f"Interpolated Spot Curve: {spot_curve_filtered}")
             print(f"Zero Curve: {B_0}")
             print(f"Initial Forwards {self.curve_string}: {forward_rate_from_zero[:,0]}")
+
         def optimization_function(params):
             a_params = params[:9]
 
@@ -242,9 +239,7 @@ class BGMCalibration:
                 print(f"Ratio: Calibration Error:Penalty {calibration_error_value/(total_objective):.2f}:{penalty/total_objective:.2f}")
             return total_objective
         result = minimize(optimization_function, self.initial_guess, method=self.optimizer_method, options=self.optimizer_options_dict, bounds=bounds)
-
         print(f"Optimization Result: {result}")
-
         return result.x
 
 
@@ -256,6 +251,7 @@ class BGMCalibration:
         correlation_matrix = construct_correlation_matrix(theta_params)
 
         # Caps
+        # 0.5, 1.5, 2.5, 3.5, 4.5
         cap_error = 0
         self.global_cap_model_vols.clear()
         for i in range(len(self.calibrated_cap_maturities)):
